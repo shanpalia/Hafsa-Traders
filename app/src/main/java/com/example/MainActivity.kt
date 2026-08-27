@@ -130,18 +130,8 @@ fun CustomerEntry(
     viewModel: HafsaViewModel,
     navController: NavHostController
 ) {
-    var authenticated by remember { mutableStateOf(runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)) }
-
-    if (!authenticated) {
-        CustomerLoginScreen(
-            onLoginSuccess = { authenticated = true },
-            onBack = {
-                // Login is the root customer entry; Android can close the activity normally.
-            }
-        )
-        return
-    }
-
+    // Customer login is intentionally NOT required at app launch.
+    // Users can browse the shop freely and are asked to sign in only when they try to order.
     CustomerAppContainer(viewModel = viewModel, navController = navController)
 }
 
@@ -152,8 +142,20 @@ fun CustomerAppContainer(
 ) {
     var isCheckingOut by remember { mutableStateOf(false) }
     var showOrderSuccess by remember { mutableStateOf(false) }
+    var showCustomerLogin by remember { mutableStateOf(false) }
+    var pendingOrderAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var itemForDetailSheet by remember { mutableStateOf<ItemEntity?>(null) }
     var offerForDetailSheet by remember { mutableStateOf<com.example.data.local.OfferWithItems?>(null) }
+
+    fun requireCustomerLogin(action: () -> Unit) {
+        val signedIn = runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)
+        if (signedIn) {
+            action()
+        } else {
+            pendingOrderAction = action
+            showCustomerLogin = true
+        }
+    }
 
     val customerTab by viewModel.customerTab.collectAsState()
 
@@ -194,8 +196,12 @@ fun CustomerAppContainer(
     val bannerMessage by viewModel.bannerMessage.collectAsState()
 
     // System back: close transient UI first, then return to Home; Home lets Android exit normally.
-    BackHandler(enabled = isCheckingOut || showOrderSuccess || selectedOrderDetail != null || itemForDetailSheet != null || offerForDetailSheet != null || customerTab != CustomerTab.HOME) {
+    BackHandler(enabled = !showCustomerLogin && (isCheckingOut || showOrderSuccess || selectedOrderDetail != null || itemForDetailSheet != null || offerForDetailSheet != null || customerTab != CustomerTab.HOME)) {
         when {
+            showCustomerLogin -> {
+                showCustomerLogin = false
+                pendingOrderAction = null
+            }
             itemForDetailSheet != null -> itemForDetailSheet = null
             offerForDetailSheet != null -> offerForDetailSheet = null
             selectedOrderDetail != null -> viewModel.closeOrderDetails()
@@ -239,7 +245,7 @@ fun CustomerAppContainer(
                     cartCount = cartCount,
                     unreadNotifCount = unreadCustNotifCount,
                     onSelectTab = { viewModel.setCustomerTab(it) },
-                    onNewOrderClick = { viewModel.setCustomerTab(CustomerTab.SERVICES) }
+                    onNewOrderClick = { requireCustomerLogin { viewModel.setCustomerTab(CustomerTab.SERVICES) } }
                 )
             }
         },
@@ -308,7 +314,7 @@ fun CustomerAppContainer(
                             getActiveOffer = { viewModel.getActiveOfferForItem(it) },
                             onViewOrder = { orderId -> viewModel.openOrderDetails(orderId) },
                             onViewAllServices = { viewModel.setCustomerTab(CustomerTab.SERVICES) },
-                            onStartOrder = { viewModel.setCustomerTab(CustomerTab.SERVICES) },
+                            onStartOrder = { requireCustomerLogin { viewModel.setCustomerTab(CustomerTab.SERVICES) } },
                             shopAddress = shopAddress
                         )
                     }
@@ -322,7 +328,7 @@ fun CustomerAppContainer(
                             onSearchChange = { viewModel.setSearchQuery(it) },
                             onSelectCategory = { viewModel.setSelectedCategory(it) },
                             onSelectItem = { itemForDetailSheet = it },
-                            onOpenCart = { isCheckingOut = true },
+                            onOpenCart = { requireCustomerLogin { isCheckingOut = true } },
                             getDiscountedPrice = { viewModel.getItemDiscountedPrice(it) },
                             getActiveOffer = { viewModel.getActiveOfferForItem(it) }
                         )
@@ -361,14 +367,35 @@ fun CustomerAppContainer(
         }
     }
 
+    // Customer authentication appears only when the user starts an order.
+    if (showCustomerLogin) {
+        CustomerLoginScreen(
+            onLoginSuccess = {
+                showCustomerLogin = false
+                val action = pendingOrderAction
+                pendingOrderAction = null
+                action?.invoke()
+            },
+            onBack = {
+                showCustomerLogin = false
+                pendingOrderAction = null
+            }
+        )
+        return
+    }
+
     // Customer Item Detail Sheet
     ItemDetailBottomSheet(
         item = itemForDetailSheet,
         onDismiss = { itemForDetailSheet = null },
-        onAddToCart = { item, qty -> viewModel.addToCart(item, qty) },
+        onAddToCart = { item, qty ->
+            requireCustomerLogin { viewModel.addToCart(item, qty) }
+        },
         onDirectOrder = { item, qty ->
-            viewModel.addToCart(item, qty)
-            isCheckingOut = true
+            requireCustomerLogin {
+                viewModel.addToCart(item, qty)
+                isCheckingOut = true
+            }
         }
     )
 

@@ -16,7 +16,7 @@ object SeedDataProvider {
             AdminSettingEntity("shop_subtitle", "PHOTOCOPY • LAMINATION • PHOTO PRINT"),
             AdminSettingEntity("shop_phone", "+91 98765 43210"),
             AdminSettingEntity("shop_whatsapp", "+91 98765 43210"),
-            AdminSettingEntity("shop_address", "Shop No. 4, Ground Floor, Central Market Road, Near City Post Office, Delhi - 110006"),
+            AdminSettingEntity("shop_address", "Chaman Chauraha Palia Kalan - 262902"),
             AdminSettingEntity("shop_hours", "Mon - Sat: 9:00 AM - 9:30 PM | Sun: 10:00 AM - 4:00 PM"),
             AdminSettingEntity("upi_id", "hafsatraders@okhdfcbank"),
             AdminSettingEntity("upi_name", "Hafsa Traders"),

@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -119,7 +120,6 @@ fun HafsaHeader(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(BrandPrimary)
                             .clickable {
                                 if (!isAdmin) {
                                     val now = System.currentTimeMillis()
@@ -138,11 +138,10 @@ fun HafsaHeader(
                             .testTag("shop_logo_header_box"),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Storefront,
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(id = com.example.R.mipmap.hafsa_traders),
                             contentDescription = "Hafsa Traders Logo",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight()
                         )
                     }
 
