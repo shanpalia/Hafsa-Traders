@@ -2,70 +2,65 @@ workflows:
   hafsa-traders-debug:
     name: Hafsa Traders Debug APK
     max_build_duration: 60
+
     environment:
+      android_signing:
+        - paliaapk-release
       vars:
-        GRADLE_VERSION: "9.3.1"
+        PACKAGE_NAME: "com.hafsatraders.app"
       java: 17
+
     cache:
       cache_paths:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
-        - $CM_BUILD_DIR/.gradle-dist
+
     scripts:
-      - name: Prepare Android SDK
+      - name: Make Gradle executable
+        script: |
+          chmod +x ./gradlew
+
+      - name: Set Android SDK location
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Install Gradle 9.3.1
+
+      - name: Build Debug APK
         script: |
-          set -e
-          mkdir -p "$CM_BUILD_DIR/.gradle-dist"
-          if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
-            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
-            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-          fi
-      - name: Verify Gradle
-        script: |
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
-      - name: Build debug APK
-        script: |
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon
+
     artifacts:
       - app/build/outputs/apk/debug/*.apk
 
+
   hafsa-traders-release:
-    name: Hafsa Traders Release APK and AAB
+    name: Hafsa Traders Release APK & AAB
     max_build_duration: 60
+
     environment:
+      android_signing:
+        - paliaapk-release
       vars:
-        GRADLE_VERSION: "9.3.1"
+        PACKAGE_NAME: "com.hafsatraders.app"
       java: 17
-     android_signing:
-  - paliaapk-release
+
     cache:
       cache_paths:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
-        - $CM_BUILD_DIR/.gradle-dist
+
     scripts:
-      - name: Prepare Android SDK
+      - name: Make Gradle executable
+        script: |
+          chmod +x ./gradlew
+
+      - name: Set Android SDK location
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Install Gradle 9.3.1
+
+      - name: Build Release APK and AAB
         script: |
-          set -e
-          mkdir -p "$CM_BUILD_DIR/.gradle-dist"
-          if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
-            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
-            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-          fi
-      - name: Verify Gradle
-        script: |
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
-      - name: Build release APK and AAB
-        script: |
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
+          ./gradlew assembleRelease bundleRelease --no-daemon
+
     artifacts:
       - app/build/outputs/apk/release/*.apk
       - app/build/outputs/bundle/release/*.aab
