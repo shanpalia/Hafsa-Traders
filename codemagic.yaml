@@ -40,9 +40,8 @@ workflows:
       vars:
         GRADLE_VERSION: "9.3.1"
       java: 17
-      # Configure a persistent CodeMagic keystore before using this workflow for production updates.
-      # android_signing:
-      #   - hafsa_traders_keystore
+      android_signing:
+        - hafsa_traders_keystore
     cache:
       cache_paths:
         - ~/.gradle/caches
