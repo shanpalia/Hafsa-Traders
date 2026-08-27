@@ -16,9 +16,8 @@ workflows:
         script: |
           set -e
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-          find "$CM_BUILD_DIR/app/src/main/res" -type f \(
-            -name 'ic_launcher.webp' -o -name 'ic_launcher_round.webp'
-          \) -delete
+          find "$CM_BUILD_DIR/app/src/main/res" -type f -name 'ic_launcher.webp' -delete
+          find "$CM_BUILD_DIR/app/src/main/res" -type f -name 'ic_launcher_round.webp' -delete
       - name: Install Gradle 9.3.1
         script: |
           set -e
