@@ -1,7 +1,5 @@
 package com.example.ui.customer
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -27,9 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocalOffer
@@ -38,7 +34,6 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
@@ -68,7 +63,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,12 +101,8 @@ fun CustomerHomeScreen(
     onViewOrder: (String) -> Unit,
     onViewAllServices: () -> Unit,
     onStartOrder: () -> Unit,
-    shopPhone: String,
-    shopAddress: String,
-    shopHours: String
+    shopAddress: String
 ) {
-    val context = LocalContext.current
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -490,7 +480,7 @@ fun CustomerHomeScreen(
             }
         }
 
-        // Shop Contact Card
+        // Shop Location Card
         item {
             Spacer(modifier = Modifier.height(20.dp))
             Card(
@@ -512,57 +502,10 @@ fun CustomerHomeScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = shopAddress,
+                        text = "Chaman Chauraha Palia Kalan - 262902",
                         style = MaterialTheme.typography.bodySmall,
                         color = LightTextSecondary
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Schedule, contentDescription = null, tint = BrandTertiary, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = shopHours,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = LightTextSecondary
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$shopPhone"))
-                                    context.startActivity(dialIntent)
-                                } catch (_: Exception) {}
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).testTag("home_call_shop_btn")
-                        ) {
-                            Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Call Shop", fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = {
-                                try {
-                                    val cleanPhone = shopPhone.replace("+", "").replace(" ", "").replace("-", "")
-                                    val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=Hello%20Hafsa%20Traders,%20I%20have%20a%20query%20about%20printing%20services."))
-                                    context.startActivity(waIntent)
-                                } catch (_: Exception) {}
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f).testTag("home_whatsapp_shop_btn")
-                        ) {
-                            Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("WhatsApp", fontSize = 12.sp)
-                        }
-                    }
                 }
             }
         }

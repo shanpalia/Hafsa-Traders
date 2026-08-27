@@ -1,7 +1,5 @@
 package com.example.ui.customer
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,8 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
@@ -35,7 +31,6 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -251,10 +245,7 @@ fun CustomerProfileScreen(
     customerAddress: String,
     shopName: String,
     shopSubtitle: String,
-    shopPhone: String,
-    shopWhatsApp: String,
     shopAddress: String,
-    shopHours: String,
     onSaveProfile: (String, String, String, String) -> Unit,
     onAdminLogin: () -> Unit = {}
 ) {
@@ -366,7 +357,7 @@ fun CustomerProfileScreen(
             }
         }
 
-        // Shop Contact Card
+        // About Hafsa Traders
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -377,89 +368,38 @@ fun CustomerProfileScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "About $shopName",
+                        text = "About HAFSA TRADERS",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = LightTextPrimary
                     )
                     Text(
-                        text = shopSubtitle,
+                        text = "PHOTOCOPY • LAMINATION • PHOTO PRINT",
                         style = MaterialTheme.typography.bodySmall,
                         color = LightTextSecondary
                     )
-
                     Spacer(modifier = Modifier.height(14.dp))
                     Divider(color = LightBorder)
                     Spacer(modifier = Modifier.height(14.dp))
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Shop Address", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-                            Text(shopAddress, style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Schedule, contentDescription = null, tint = BrandTertiary, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("Opening Hours", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-                            Text(shopHours, style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Call, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("Direct Helpline", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-                            Text(shopPhone, style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val context = LocalContext.current
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$shopPhone"))
-                                    context.startActivity(dialIntent)
-                                } catch (_: Exception) {}
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("profile_call_shop_btn")
-                        ) {
-                            Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Call Shop")
-                        }
-
-                        Button(
-                            onClick = {
-                                try {
-                                    val cleanPhone = shopPhone.replace("+", "").replace(" ", "").replace("-", "")
-                                    val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=Hello%20Hafsa%20Traders,%20I%20have%20a%20query%20about%20my%20order."))
-                                    context.startActivity(waIntent)
-                                } catch (_: Exception) {}
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("profile_whatsapp_shop_btn")
-                        ) {
-                            Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("WhatsApp")
+                            Text(
+                                "Shop Address",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = LightTextPrimary
+                            )
+                            Text(
+                                "Chaman Chauraha Palia Kalan - 262902",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = LightTextSecondary
+                            )
                         }
                     }
                 }

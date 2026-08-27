@@ -60,6 +60,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.data.local.ItemEntity
+import com.google.firebase.auth.FirebaseAuth
 import com.example.ui.admin.*
 import com.example.ui.components.HafsaHeader
 import com.example.ui.components.InAppNotificationBanner
@@ -101,7 +102,7 @@ class MainActivity : ComponentActivity() {
 
                     // Customer App Route: Completely separate, zero admin navigation
                     composable("/") {
-                        CustomerAppContainer(
+                        CustomerEntry(
                             viewModel = viewModel,
                             navController = navController
                         )
@@ -124,6 +125,26 @@ class MainActivity : ComponentActivity() {
  * Dedicated Customer Application Container
  * Zero Admin entry points, tabs, buttons, or hidden gestures.
  */
+@Composable
+fun CustomerEntry(
+    viewModel: HafsaViewModel,
+    navController: NavHostController
+) {
+    var authenticated by remember { mutableStateOf(runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)) }
+
+    if (!authenticated) {
+        CustomerLoginScreen(
+            onLoginSuccess = { authenticated = true },
+            onBack = {
+                // Login is the root customer entry; Android can close the activity normally.
+            }
+        )
+        return
+    }
+
+    CustomerAppContainer(viewModel = viewModel, navController = navController)
+}
+
 @Composable
 fun CustomerAppContainer(
     viewModel: HafsaViewModel,
@@ -165,7 +186,7 @@ fun CustomerAppContainer(
     val shopSubtitle = viewModel.getSettingValue("shop_subtitle", "PHOTOCOPY • LAMINATION • PHOTO PRINT")
     val shopPhone = viewModel.getSettingValue("shop_phone", "+91 98765 43210")
     val shopWhatsApp = viewModel.getSettingValue("shop_whatsapp", "+91 98765 43210")
-    val shopAddress = viewModel.getSettingValue("shop_address", "Shop No. 4, Main Market, Opp. City College, New Delhi - 110001")
+    val shopAddress = viewModel.getSettingValue("shop_address", "Chaman Chauraha Palia Kalan - 262902")
     val shopHours = viewModel.getSettingValue("shop_hours", "Mon-Sat: 8:30 AM - 9:30 PM | Sun: 10:00 AM - 6:00 PM")
     val upiId = viewModel.getSettingValue("merchant_upi_id", "hafsatraders@okhdfcbank")
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
@@ -288,9 +309,7 @@ fun CustomerAppContainer(
                             onViewOrder = { orderId -> viewModel.openOrderDetails(orderId) },
                             onViewAllServices = { viewModel.setCustomerTab(CustomerTab.SERVICES) },
                             onStartOrder = { viewModel.setCustomerTab(CustomerTab.SERVICES) },
-                            shopPhone = shopPhone,
-                            shopAddress = shopAddress,
-                            shopHours = shopHours
+                            shopAddress = shopAddress
                         )
                     }
                     CustomerTab.SERVICES -> {
@@ -332,10 +351,7 @@ fun CustomerAppContainer(
                             customerAddress = custAddress,
                             shopName = shopName,
                             shopSubtitle = shopSubtitle,
-                            shopPhone = shopPhone,
-                            shopWhatsApp = shopWhatsApp,
                             shopAddress = shopAddress,
-                            shopHours = shopHours,
                             onSaveProfile = { n, p, e, a -> viewModel.setCustomerDetails(n, p, e, a) },
                             onAdminLogin = { navController.navigate("/admin") }
                         )
@@ -415,7 +431,7 @@ fun AdminAppContainer(
     val shopSubtitle = viewModel.getSettingValue("shop_subtitle", "PHOTOCOPY • LAMINATION • PHOTO PRINT")
     val shopPhone = viewModel.getSettingValue("shop_phone", "+91 98765 43210")
     val shopWhatsApp = viewModel.getSettingValue("shop_whatsapp", "+91 98765 43210")
-    val shopAddress = viewModel.getSettingValue("shop_address", "Shop No. 4, Main Market, Opp. City College, New Delhi - 110001")
+    val shopAddress = viewModel.getSettingValue("shop_address", "Chaman Chauraha Palia Kalan - 262902")
     val shopHours = viewModel.getSettingValue("shop_hours", "Mon-Sat: 8:30 AM - 9:30 PM | Sun: 10:00 AM - 6:00 PM")
     val upiId = viewModel.getSettingValue("merchant_upi_id", "hafsatraders@okhdfcbank")
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
