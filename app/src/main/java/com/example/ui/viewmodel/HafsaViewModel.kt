@@ -16,6 +16,8 @@ import com.example.data.repository.CartItem
 import com.example.data.repository.HafsaRepository
 import com.example.data.repository.OrderWithDetails
 import com.example.data.repository.UploadedFileDraft
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -358,44 +360,93 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Admin Login / Backend Authentication & Authorization (role = admin)
+    // Admin Authentication: Firebase Email/Password + Firestore admin role.
+    // Required Firestore document: admins/{uid} with { role: "admin", active: true }.
     fun loginAdmin(
         email: String,
         password: String,
         onSuccess: () -> Unit = {},
         onUnauthorized: () -> Unit = {}
     ) {
-        viewModelScope.launch {
-            _isAdminLoading.value = true
-            try {
-                val registeredAdminEmail = repository.getSetting("admin_email", "admin@hafsatraders.com")
-                val registeredAdminPass = repository.getSetting("admin_password", "admin123")
-                val adminRole = repository.getSetting("admin_role", "admin")
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail.isBlank() || password.isBlank()) {
+            _adminLoginError.value = "Enter your admin email and password."
+            return
+        }
 
-                val cleanEmail = email.trim().lowercase()
-                val isEmailValid = cleanEmail == registeredAdminEmail.trim().lowercase()
-                val isPassValid = password == registeredAdminPass
+        _isAdminLoading.value = true
+        _adminLoginError.value = null
 
-                if (isEmailValid && isPassValid && adminRole.equals("admin", ignoreCase = true)) {
-                    _isAdminAuthenticated.value = true
-                    _adminLoginError.value = null
-                    _currentRole.value = AppRole.ADMIN
-                    _adminTab.value = AdminTab.DASHBOARD
-                    showBanner("Admin authenticated successfully (Role: $adminRole)")
-                    onSuccess()
-                } else {
-                    _isAdminAuthenticated.value = false
-                    _adminLoginError.value = "Unauthorized access. Only verified shop owners with 'admin' role can access this panel."
-                    showBanner("Unauthorized access")
-                    onUnauthorized()
+        try {
+            val auth = FirebaseAuth.getInstance()
+            auth.signInWithEmailAndPassword(cleanEmail, password)
+                .addOnCompleteListener { authTask ->
+                    if (!authTask.isSuccessful) {
+                        _isAdminLoading.value = false
+                        _isAdminAuthenticated.value = false
+                        _adminLoginError.value = authTask.exception?.localizedMessage
+                            ?: "Invalid admin email or password."
+                        showBanner("Admin login failed")
+                        return@addOnCompleteListener
+                    }
+
+                    val user = auth.currentUser
+                    if (user == null) {
+                        _isAdminLoading.value = false
+                        _isAdminAuthenticated.value = false
+                        _adminLoginError.value = "Firebase authentication failed. Please try again."
+                        return@addOnCompleteListener
+                    }
+
+                    FirebaseFirestore.getInstance()
+                        .collection("admins")
+                        .document(user.uid)
+                        .get()
+                        .addOnSuccessListener { document ->
+                            val role = document.getString("role")?.trim()?.lowercase()
+                            val active = document.getBoolean("active") ?: false
+
+                            if (role == "admin" && active) {
+                                _isAdminAuthenticated.value = true
+                                _adminLoginError.value = null
+                                _currentRole.value = AppRole.ADMIN
+                                _adminTab.value = AdminTab.DASHBOARD
+                                _isAdminLoading.value = false
+                                showBanner("Admin authenticated successfully")
+                                onSuccess()
+                            } else {
+                                auth.signOut()
+                                _isAdminAuthenticated.value = false
+                                _isAdminLoading.value = false
+                                _adminLoginError.value = "This Firebase account is not authorized as an active admin."
+                                showBanner("Unauthorized admin account")
+                                onUnauthorized()
+                            }
+                        }
+                        .addOnFailureListener { error ->
+                            auth.signOut()
+                            _isAdminAuthenticated.value = false
+                            _isAdminLoading.value = false
+                            _adminLoginError.value = error.localizedMessage
+                                ?: "Unable to verify admin role."
+                            showBanner("Admin role verification failed")
+                        }
                 }
-            } finally {
-                _isAdminLoading.value = false
-            }
+                .addOnFailureListener { error ->
+                    _isAdminLoading.value = false
+                    _isAdminAuthenticated.value = false
+                    _adminLoginError.value = error.localizedMessage
+                        ?: "Unable to connect to Firebase Authentication."
+                }
+        } catch (error: Exception) {
+            _isAdminLoading.value = false
+            _isAdminAuthenticated.value = false
+            _adminLoginError.value = "Firebase is not configured. Add google-services.json to the app."
         }
     }
 
     fun logoutAdmin() {
+        runCatching { FirebaseAuth.getInstance().signOut() }
         _isAdminAuthenticated.value = false
         _currentRole.value = AppRole.CUSTOMER
         _customerTab.value = CustomerTab.HOME
