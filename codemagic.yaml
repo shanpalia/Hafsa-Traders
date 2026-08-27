@@ -40,8 +40,8 @@ workflows:
       vars:
         GRADLE_VERSION: "9.3.1"
       java: 17
-      android_signing:
-        - hafsa_traders_keystore
+     android_signing:
+  - paliaapk-release
     cache:
       cache_paths:
         - ~/.gradle/caches
