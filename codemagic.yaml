@@ -76,6 +76,12 @@ workflows:
         script: |
           set -e
           "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: Signed release APK was not produced."
+            exit 1
+          fi
+          cp "$APK" "app/build/outputs/apk/release/hafsatraders.apk"
     artifacts:
-      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/apk/release/hafsatraders.apk
       - app/build/outputs/bundle/release/*.aab

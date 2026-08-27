@@ -24,16 +24,19 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("CM_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
-      val storePass = System.getenv("CM_KEYSTORE_PASSWORD") ?: System.getenv("STORE_PASSWORD")
-      val keyPass = System.getenv("CM_KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
-      val aliasValue = System.getenv("CM_KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
+      val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
+      val cmStorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+      val cmKeyPassword = System.getenv("CM_KEY_PASSWORD")
+      val cmKeyAlias = System.getenv("CM_KEY_ALIAS")
 
-      if (!keystorePath.isNullOrBlank() && !storePass.isNullOrBlank() && !keyPass.isNullOrBlank() && !aliasValue.isNullOrBlank()) {
-        storeFile = file(keystorePath)
-        storePassword = storePass
-        keyAlias = aliasValue
-        keyPassword = keyPass
+      if (!cmKeystorePath.isNullOrBlank() &&
+          !cmStorePassword.isNullOrBlank() &&
+          !cmKeyPassword.isNullOrBlank() &&
+          !cmKeyAlias.isNullOrBlank()) {
+        storeFile = file(cmKeystorePath)
+        storePassword = cmStorePassword
+        keyPassword = cmKeyPassword
+        keyAlias = cmKeyAlias
       }
     }
   }
@@ -43,13 +46,20 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      val keystorePath = System.getenv("CM_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
-      if (!keystorePath.isNullOrBlank()) {
+      val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
+      val cmStorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+      val cmKeyPassword = System.getenv("CM_KEY_PASSWORD")
+      val cmKeyAlias = System.getenv("CM_KEY_ALIAS")
+      if (!cmKeystorePath.isNullOrBlank() &&
+          !cmStorePassword.isNullOrBlank() &&
+          !cmKeyPassword.isNullOrBlank() &&
+          !cmKeyAlias.isNullOrBlank()) {
         signingConfig = signingConfigs.getByName("release")
       }
     }
     debug { }
   }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
