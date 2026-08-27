@@ -1,31 +1,6 @@
 workflows:
-  hafsa-traders-debug:
-    name: Hafsa Traders Debug APK
-    max_build_duration: 60
-    environment:
-      vars:
-        PACKAGE_NAME: "com.hafsatraders.app"
-      java: 17
-    cache:
-      cache_paths:
-        - ~/.gradle/caches
-        - ~/.gradle/wrapper
-    scripts:
-      - name: Prepare Gradle
-        script: |
-          chmod +x ./gradlew
-          ./gradlew --version
-      - name: Set Android SDK location
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Build Debug APK
-        script: |
-          ./gradlew assembleDebug --no-daemon
-    artifacts:
-      - app/build/outputs/apk/debug/*.apk
-
   hafsa-traders-release:
-    name: Hafsa Traders Release APK and AAB
+    name: Hafsa Traders Signed APK
     max_build_duration: 60
     environment:
       android_signing:
@@ -38,40 +13,62 @@ workflows:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
     scripts:
-      - name: Prepare Gradle
+      - name: Prepare Gradle 9.3.1 and signing
         script: |
+          set -e
           chmod +x ./gradlew
-          ./gradlew --version
+
+          if [ -z "${CM_KEYSTORE_PATH:-}" ]; then
+            echo "ERROR: CodeMagic keystore 'paliaapk-release' was not attached."
+            exit 1
+          fi
+          if [ -z "${CM_KEYSTORE_PASSWORD:-}" ] || [ -z "${CM_KEY_ALIAS:-}" ] || [ -z "${CM_KEY_PASSWORD:-}" ]; then
+            echo "ERROR: CodeMagic signing variables are missing."
+            exit 1
+          fi
+
+          GRADLE_VERSION=9.3.1
+          DIST_DIR="$CM_BUILD_DIR/.gradle-dist"
+          GRADLE_HOME="$DIST_DIR/gradle-$GRADLE_VERSION"
+          if [ ! -x "$GRADLE_HOME/bin/gradle" ]; then
+            mkdir -p "$DIST_DIR"
+            curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o "$DIST_DIR/gradle-${GRADLE_VERSION}-bin.zip"
+            rm -rf "$GRADLE_HOME"
+            unzip -q "$DIST_DIR/gradle-${GRADLE_VERSION}-bin.zip" -d "$DIST_DIR"
+          fi
+          "$GRADLE_HOME/bin/gradle" --version
+
       - name: Set Android SDK location
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Build signed Release APK and AAB
+
+      - name: Build signed Release APK
         script: |
-          ./gradlew clean assembleRelease bundleRelease --no-daemon
-      - name: Verify release signing and name APK
+          set -e
+          GRADLE_HOME="$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1"
+          "$GRADLE_HOME/bin/gradle" clean assembleRelease --no-daemon --stacktrace
+
+      - name: Verify and rename signed APK
         script: |
           set -e
           APK="$CM_BUILD_DIR/app/build/outputs/apk/release/app-release.apk"
-          AAB="$CM_BUILD_DIR/app/build/outputs/bundle/release/app-release.aab"
           if [ ! -f "$APK" ]; then
-            echo "ERROR: Signed release APK was not generated."
+            echo "ERROR: app-release.apk was not generated."
+            echo "Available APK files:"
+            find "$CM_BUILD_DIR/app/build/outputs" -type f -name '*.apk' -print || true
             exit 1
           fi
-          if [ ! -f "$AAB" ]; then
-            echo "ERROR: Release AAB was not generated."
-            exit 1
-          fi
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           if [ -z "$APKSIGNER" ]; then
             echo "ERROR: apksigner was not found."
             exit 1
           fi
+
           "$APKSIGNER" verify --verbose "$APK"
           mkdir -p "$CM_BUILD_DIR/artifacts"
           cp "$APK" "$CM_BUILD_DIR/artifacts/hafsatraders.apk"
-          cp "$AAB" "$CM_BUILD_DIR/artifacts/hafsatraders.aab"
-          echo "Signed APK created: artifacts/hafsatraders.apk"
-          echo "Signed AAB created: artifacts/hafsatraders.aab"
+          echo "SIGNED APK: $CM_BUILD_DIR/artifacts/hafsatraders.apk"
+
     artifacts:
       - artifacts/hafsatraders.apk
-      - artifacts/hafsatraders.aab
