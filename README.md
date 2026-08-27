@@ -1,9 +1,38 @@
-# Hafsa Traders — CodeMagic Signed APK
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-This project is configured to build **only the signed release APK** in CodeMagic.
+# Run and deploy your AI Studio app
 
-CodeMagic workflow: `hafsa-traders-release`
+This contains everything you need to run your app locally.
 
-Expected artifact: `hafsatraders.apk`
+View your app in AI Studio: https://ai.studio/apps/49ffe48e-35a3-43a8-a61c-1de13de4104d
 
-The workflow explicitly downloads and uses Gradle 9.3.1, attaches the CodeMagic signing identity `paliaapk-release`, builds `assembleRelease`, verifies the APK with `apksigner`, and publishes only the signed APK artifact.
+## Run Locally
+
+**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+
+
+1. Open Android Studio
+2. Select **Open** and choose the directory containing this project
+3. Allow Android Studio to fix any incompatibilities as it imports the project.
+4. Configure any required Gemini/API secrets through CodeMagic environment variables or the appropriate secure secrets mechanism; do not commit API keys to GitHub.
+5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
+6. Run the app on an emulator or physical device
+7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.
+
+
+## Admin login
+
+The customer Profile screen now has a visible Admin Login entry. The login uses the locally configured `admin_email`, `admin_password`, and `admin_role` settings. Default credentials are `admin@hafsatraders.com` / `admin123`; change them from Admin Settings after first login.
+
+## CodeMagic
+
+Use `codemagic.yaml`. The workflows download Gradle 9.3.1 explicitly, so they do not depend on the preinstalled Gradle version.
+
+
+## UI fixes in this build
+- Safe status/navigation bar insets for portrait phones.
+- Android system Back closes sheets/forms, returns to the previous section, and exits from Home.
+- New green/cream rounded Hafsa Traders launcher icon.
+- Release workflow outputs only a signed `hafsatraders.apk`.

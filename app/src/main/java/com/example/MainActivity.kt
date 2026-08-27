@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -78,7 +79,6 @@ import com.example.ui.viewmodel.HafsaViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             HafsaTradersTheme {
                 val navController = rememberNavController()
@@ -172,10 +172,25 @@ fun CustomerAppContainer(
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
 
+    // System back: close transient UI first, then return to Home; Home lets Android exit normally.
+    BackHandler(enabled = isCheckingOut || showOrderSuccess || selectedOrderDetail != null || itemForDetailSheet != null || offerForDetailSheet != null || customerTab != CustomerTab.HOME) {
+        when {
+            itemForDetailSheet != null -> itemForDetailSheet = null
+            offerForDetailSheet != null -> offerForDetailSheet = null
+            selectedOrderDetail != null -> viewModel.closeOrderDetails()
+            isCheckingOut -> isCheckingOut = false
+            showOrderSuccess -> {
+                showOrderSuccess = false
+                viewModel.setCustomerTab(CustomerTab.HOME)
+            }
+            customerTab != CustomerTab.HOME -> viewModel.setCustomerTab(CustomerTab.HOME)
+        }
+    }
+
     Scaffold(
         topBar = {
             if (!isCheckingOut && !showOrderSuccess) {
-                Column {
+                Column(modifier = Modifier.statusBarsPadding()) {
                     HafsaHeader(
                         shopName = shopName,
                         shopSubtitle = shopSubtitle,
@@ -409,6 +424,20 @@ fun AdminAppContainer(
     val adminEmail = viewModel.getSettingValue("admin_email", "admin@hafsatraders.com")
     val isAdminLoading by viewModel.isAdminLoading.collectAsState()
 
+    // System back in admin returns to the previous admin section, then exits admin.
+    BackHandler(enabled = isAdminAuth) {
+        if (selectedOrderDetail != null) {
+            viewModel.closeOrderDetails()
+        } else if (showAdminAddEditSheet) {
+            showAdminAddEditSheet = false
+        } else if (adminTab != AdminTab.DASHBOARD) {
+            viewModel.setAdminTab(AdminTab.DASHBOARD)
+        } else {
+            viewModel.logoutAdmin()
+            navController.navigate("/") { launchSingleTop = true }
+        }
+    }
+
     if (!isAdminAuth) {
         BackHandler { navController.navigate("/") { launchSingleTop = true } }
         AdminLoginScreen(
@@ -429,7 +458,7 @@ fun AdminAppContainer(
 
     Scaffold(
         topBar = {
-            Column {
+            Column(modifier = Modifier.statusBarsPadding()) {
                 HafsaHeader(
                     shopName = "HAFSA TRADERS — ADMIN",
                     shopSubtitle = "Live Operations & Store Control",
@@ -644,7 +673,8 @@ fun CustomerBottomNavigation(
 ) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        modifier = Modifier.navigationBarsPadding()
     ) {
         NavigationBarItem(
             selected = selectedTab == CustomerTab.HOME,
@@ -744,7 +774,8 @@ fun AdminBottomNavigation(
 ) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        modifier = Modifier.navigationBarsPadding()
     ) {
         NavigationBarItem(
             selected = selectedTab == AdminTab.DASHBOARD,
