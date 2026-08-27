@@ -1,0 +1,57 @@
+workflows:
+  hafsa-traders-debug:
+    name: Hafsa Traders Debug APK
+    max_build_duration: 60
+    environment:
+      java: 17
+    cache:
+      cache_paths:
+        - ~/.gradle/caches
+        - ~/.gradle/wrapper
+    scripts:
+      - name: Prepare Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Install Gradle 9.3.1
+        script: |
+          set -e
+          mkdir -p "$CM_BUILD_DIR/.gradle-dist"
+          if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
+            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip"
+            unzip -q -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+          fi
+      - name: Build debug APK
+        script: |
+          set -e
+          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleDebug --no-daemon
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
+
+  hafsa-traders-release:
+    name: Hafsa Traders Release APK and AAB
+    max_build_duration: 60
+    environment:
+      java: 17
+    cache:
+      cache_paths:
+        - ~/.gradle/caches
+        - ~/.gradle/wrapper
+    scripts:
+      - name: Prepare Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Install Gradle 9.3.1
+        script: |
+          set -e
+          mkdir -p "$CM_BUILD_DIR/.gradle-dist"
+          if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
+            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip"
+            unzip -q -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+          fi
+      - name: Build release APK and AAB
+        script: |
+          set -e
+          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab

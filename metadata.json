@@ -1,0 +1,6 @@
+{
+  "name": "Hafsa Traders",
+  "description": "Photocopy, printing, lamination, and photo-printing mobile app with Customer ordering and Shop Owner Admin panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
