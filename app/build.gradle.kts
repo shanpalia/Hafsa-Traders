@@ -27,12 +27,12 @@ android {
       val keystorePath = System.getenv("CM_KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH")
       val storePass = System.getenv("CM_KEYSTORE_PASSWORD") ?: System.getenv("STORE_PASSWORD")
       val keyPass = System.getenv("CM_KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
-      val keyAlias = System.getenv("CM_KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
+      val aliasValue = System.getenv("CM_KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
 
-      if (!keystorePath.isNullOrBlank() && !storePass.isNullOrBlank() && !keyPass.isNullOrBlank() && !keyAlias.isNullOrBlank()) {
+      if (!keystorePath.isNullOrBlank() && !storePass.isNullOrBlank() && !keyPass.isNullOrBlank() && !aliasValue.isNullOrBlank()) {
         storeFile = file(keystorePath)
         storePassword = storePass
-        keyAlias = keyAlias
+        keyAlias = aliasValue
         keyPassword = keyPass
       }
     }
