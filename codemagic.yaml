@@ -21,6 +21,9 @@ workflows:
             unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
             rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
           fi
+      - name: Verify Gradle version
+        script: |
+          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
       - name: Build debug APK
         script: |
           "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleDebug --no-daemon
@@ -49,6 +52,9 @@ workflows:
             unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
             rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
           fi
+      - name: Verify Gradle version
+        script: |
+          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
       - name: Build release APK and AAB
         script: |
           "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
