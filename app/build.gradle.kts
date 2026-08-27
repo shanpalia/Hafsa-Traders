@@ -22,21 +22,16 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-  signingConfigs {
-    create("release") {
-      val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
-      val cmStorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-      val cmKeyPassword = System.getenv("CM_KEY_PASSWORD")
-      val cmKeyAlias = System.getenv("CM_KEY_ALIAS")
+  val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
+  val isCodemagic = !cmKeystorePath.isNullOrBlank()
 
-      if (!cmKeystorePath.isNullOrBlank() &&
-          !cmStorePassword.isNullOrBlank() &&
-          !cmKeyPassword.isNullOrBlank() &&
-          !cmKeyAlias.isNullOrBlank()) {
-        storeFile = file(cmKeystorePath)
-        storePassword = cmStorePassword
-        keyPassword = cmKeyPassword
-        keyAlias = cmKeyAlias
+  signingConfigs {
+    if (isCodemagic) {
+      create("release") {
+        storeFile = file(cmKeystorePath!!)
+        storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+        keyAlias = System.getenv("CM_KEY_ALIAS")
+        keyPassword = System.getenv("CM_KEY_PASSWORD")
       }
     }
   }
@@ -46,14 +41,7 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
-      val cmStorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-      val cmKeyPassword = System.getenv("CM_KEY_PASSWORD")
-      val cmKeyAlias = System.getenv("CM_KEY_ALIAS")
-      if (!cmKeystorePath.isNullOrBlank() &&
-          !cmStorePassword.isNullOrBlank() &&
-          !cmKeyPassword.isNullOrBlank() &&
-          !cmKeyAlias.isNullOrBlank()) {
+      if (isCodemagic) {
         signingConfig = signingConfigs.getByName("release")
       }
     }

@@ -3,85 +3,75 @@ workflows:
     name: Hafsa Traders Debug APK
     max_build_duration: 60
     environment:
+      vars:
+        PACKAGE_NAME: "com.hafsatraders.app"
       java: 17
     cache:
       cache_paths:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
-        - $CM_BUILD_DIR/.gradle-dist
     scripts:
-      - name: Prepare Android SDK
+      - name: Prepare Gradle
         script: |
-          set -e
+          chmod +x ./gradlew
+          ./gradlew --version
+      - name: Set Android SDK location
+        script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Install Gradle 9.3.1
-        script: |
-          set -e
-          DIST="$CM_BUILD_DIR/.gradle-dist"
-          GRADLE="$DIST/gradle-9.3.1/bin/gradle"
-          mkdir -p "$DIST"
-          if [ ! -x "$GRADLE" ]; then
-            curl -fL --retry 3 https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-            rm -rf "$DIST/gradle-9.3.1"
-            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$DIST"
-            chmod +x "$GRADLE"
-            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-          fi
-      - name: Verify Gradle version
-        script: |
-          set -e
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
       - name: Build Debug APK
         script: |
-          set -e
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon
     artifacts:
       - app/build/outputs/apk/debug/*.apk
 
   hafsa-traders-release:
-    name: Hafsa Traders Release APK & AAB
+    name: Hafsa Traders Release APK and AAB
     max_build_duration: 60
     environment:
       android_signing:
         - paliaapk-release
+      vars:
+        PACKAGE_NAME: "com.hafsatraders.app"
       java: 17
     cache:
       cache_paths:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
-        - $CM_BUILD_DIR/.gradle-dist
     scripts:
-      - name: Prepare Android SDK
+      - name: Prepare Gradle
         script: |
-          set -e
+          chmod +x ./gradlew
+          ./gradlew --version
+      - name: Set Android SDK location
+        script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-      - name: Install Gradle 9.3.1
+      - name: Build signed Release APK and AAB
+        script: |
+          ./gradlew clean assembleRelease bundleRelease --no-daemon
+      - name: Verify release signing and name APK
         script: |
           set -e
-          DIST="$CM_BUILD_DIR/.gradle-dist"
-          GRADLE="$DIST/gradle-9.3.1/bin/gradle"
-          mkdir -p "$DIST"
-          if [ ! -x "$GRADLE" ]; then
-            curl -fL --retry 3 https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-            rm -rf "$DIST/gradle-9.3.1"
-            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$DIST"
-            chmod +x "$GRADLE"
-            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
-          fi
-      - name: Verify Gradle version
-        script: |
-          set -e
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" --version
-      - name: Build Release APK and AAB
-        script: |
-          set -e
-          "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="$CM_BUILD_DIR/app/build/outputs/apk/release/app-release.apk"
+          AAB="$CM_BUILD_DIR/app/build/outputs/bundle/release/app-release.aab"
           if [ ! -f "$APK" ]; then
-            echo "ERROR: Signed release APK was not produced."
+            echo "ERROR: Signed release APK was not generated."
             exit 1
           fi
-          cp "$APK" "app/build/outputs/apk/release/hafsatraders.apk"
+          if [ ! -f "$AAB" ]; then
+            echo "ERROR: Release AAB was not generated."
+            exit 1
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner was not found."
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose "$APK"
+          mkdir -p "$CM_BUILD_DIR/artifacts"
+          cp "$APK" "$CM_BUILD_DIR/artifacts/hafsatraders.apk"
+          cp "$AAB" "$CM_BUILD_DIR/artifacts/hafsatraders.aab"
+          echo "Signed APK created: artifacts/hafsatraders.apk"
+          echo "Signed AAB created: artifacts/hafsatraders.aab"
     artifacts:
-      - app/build/outputs/apk/release/hafsatraders.apk
-      - app/build/outputs/bundle/release/*.aab
+      - artifacts/hafsatraders.apk
+      - artifacts/hafsatraders.aab
