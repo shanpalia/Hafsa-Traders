@@ -9,7 +9,7 @@ workflows:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
     scripts:
-      - name: Prepare Android SDK location
+      - name: Prepare Android SDK
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
       - name: Install Gradle 9.3.1
@@ -17,12 +17,12 @@ workflows:
           set -e
           mkdir -p "$CM_BUILD_DIR/.gradle-dist"
           if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
-            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip"
-            unzip -q -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
+            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
           fi
       - name: Build debug APK
         script: |
-          set -e
           "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleDebug --no-daemon
     artifacts:
       - app/build/outputs/apk/debug/*.apk
@@ -37,7 +37,7 @@ workflows:
         - ~/.gradle/caches
         - ~/.gradle/wrapper
     scripts:
-      - name: Prepare Android SDK location
+      - name: Prepare Android SDK
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
       - name: Install Gradle 9.3.1
@@ -45,12 +45,12 @@ workflows:
           set -e
           mkdir -p "$CM_BUILD_DIR/.gradle-dist"
           if [ ! -x "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" ]; then
-            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip"
-            unzip -q -o "$CM_BUILD_DIR/.gradle-dist/gradle.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+            curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
+            unzip -q -o "$CM_BUILD_DIR/gradle-9.3.1-bin.zip" -d "$CM_BUILD_DIR/.gradle-dist"
+            rm -f "$CM_BUILD_DIR/gradle-9.3.1-bin.zip"
           fi
       - name: Build release APK and AAB
         script: |
-          set -e
           "$CM_BUILD_DIR/.gradle-dist/gradle-9.3.1/bin/gradle" assembleRelease bundleRelease --no-daemon
     artifacts:
       - app/build/outputs/apk/release/*.apk

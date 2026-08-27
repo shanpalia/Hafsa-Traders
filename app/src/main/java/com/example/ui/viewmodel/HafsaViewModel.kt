@@ -369,13 +369,8 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
             val adminRole = repository.getSetting("admin_role", "admin")
 
             val cleanEmail = email.trim().lowercase()
-            val isEmailValid = cleanEmail == registeredAdminEmail.lowercase() ||
-                    cleanEmail == "hafsa786@gmail.com" ||
-                    cleanEmail == "admin@hafsatraders.com"
-            val isPassValid = password == registeredAdminPass ||
-                    password == "admin123" ||
-                    password == "hafsa786" ||
-                    password == "1234"
+            val isEmailValid = cleanEmail == registeredAdminEmail.trim().lowercase()
+            val isPassValid = password == registeredAdminPass
 
             if (isEmailValid && isPassValid && adminRole.equals("admin", ignoreCase = true)) {
                 _isAdminAuthenticated.value = true

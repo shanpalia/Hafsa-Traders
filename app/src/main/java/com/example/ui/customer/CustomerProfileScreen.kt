@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
@@ -254,7 +255,8 @@ fun CustomerProfileScreen(
     shopWhatsApp: String,
     shopAddress: String,
     shopHours: String,
-    onSaveProfile: (String, String, String, String) -> Unit
+    onSaveProfile: (String, String, String, String) -> Unit,
+    onAdminLogin: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(customerName) }
     var phone by remember { mutableStateOf(customerPhone) }
@@ -462,7 +464,62 @@ fun CustomerProfileScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(30.dp))
+        }
+
+        // Secure, explicit admin entry point
+        item {
+            Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, LightBorder, RoundedCornerShape(16.dp))
+                        .clickable { onAdminLogin() }
+                        .testTag("customer_admin_login_card")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(BrandPrimaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AdminPanelSettings,
+                                contentDescription = "Admin Login",
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Admin Login",
+                                fontWeight = FontWeight.Bold,
+                                color = LightTextPrimary
+                            )
+                            Text(
+                                text = "Store owner / administrator access",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = LightTextSecondary
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = LightTextSecondary
+                        )
+                    }
+                }
+        }
+
+        item { Spacer(modifier = Modifier.height(14.dp)) }
         }
     }
 }

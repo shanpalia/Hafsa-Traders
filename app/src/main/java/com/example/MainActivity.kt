@@ -2,6 +2,7 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -320,7 +321,8 @@ fun CustomerAppContainer(
                             shopWhatsApp = shopWhatsApp,
                             shopAddress = shopAddress,
                             shopHours = shopHours,
-                            onSaveProfile = { n, p, e, a -> viewModel.setCustomerDetails(n, p, e, a) }
+                            onSaveProfile = { n, p, e, a -> viewModel.setCustomerDetails(n, p, e, a) },
+                            onAdminLogin = { navController.navigate("/admin") }
                         )
                     }
                 }
@@ -404,10 +406,11 @@ fun AdminAppContainer(
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
-    val adminEmail = viewModel.getSettingValue("admin_email", "shanpalia786@gmail.com")
+    val adminEmail = viewModel.getSettingValue("admin_email", "admin@hafsatraders.com")
     val isAdminLoading by viewModel.isAdminLoading.collectAsState()
 
     if (!isAdminAuth) {
+        BackHandler { navController.navigate("/") { launchSingleTop = true } }
         AdminLoginScreen(
             errorMessage = adminLoginError,
             isLoading = isAdminLoading,
