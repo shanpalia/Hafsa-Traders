@@ -63,6 +63,8 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _adminLoginError = MutableStateFlow<String?>(null)
     val adminLoginError: StateFlow<String?> = _adminLoginError.asStateFlow()
+    private val _isAdminLoading = MutableStateFlow(false)
+    val isAdminLoading: StateFlow<Boolean> = _isAdminLoading.asStateFlow()
 
     // Categories & Items from DB
     val allCategories: StateFlow<List<CategoryEntity>> = repository.allCategories
@@ -364,26 +366,31 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         onUnauthorized: () -> Unit = {}
     ) {
         viewModelScope.launch {
-            val registeredAdminEmail = repository.getSetting("admin_email", "admin@hafsatraders.com")
-            val registeredAdminPass = repository.getSetting("admin_password", "admin123")
-            val adminRole = repository.getSetting("admin_role", "admin")
+            _isAdminLoading.value = true
+            try {
+                val registeredAdminEmail = repository.getSetting("admin_email", "admin@hafsatraders.com")
+                val registeredAdminPass = repository.getSetting("admin_password", "admin123")
+                val adminRole = repository.getSetting("admin_role", "admin")
 
-            val cleanEmail = email.trim().lowercase()
-            val isEmailValid = cleanEmail == registeredAdminEmail.trim().lowercase()
-            val isPassValid = password == registeredAdminPass
+                val cleanEmail = email.trim().lowercase()
+                val isEmailValid = cleanEmail == registeredAdminEmail.trim().lowercase()
+                val isPassValid = password == registeredAdminPass
 
-            if (isEmailValid && isPassValid && adminRole.equals("admin", ignoreCase = true)) {
-                _isAdminAuthenticated.value = true
-                _adminLoginError.value = null
-                _currentRole.value = AppRole.ADMIN
-                _adminTab.value = AdminTab.DASHBOARD
-                showBanner("Admin authenticated successfully (Role: $adminRole)")
-                onSuccess()
-            } else {
-                _isAdminAuthenticated.value = false
-                _adminLoginError.value = "Unauthorized access. Only verified shop owners with 'admin' role can access this panel."
-                showBanner("Unauthorized access")
-                onUnauthorized()
+                if (isEmailValid && isPassValid && adminRole.equals("admin", ignoreCase = true)) {
+                    _isAdminAuthenticated.value = true
+                    _adminLoginError.value = null
+                    _currentRole.value = AppRole.ADMIN
+                    _adminTab.value = AdminTab.DASHBOARD
+                    showBanner("Admin authenticated successfully (Role: $adminRole)")
+                    onSuccess()
+                } else {
+                    _isAdminAuthenticated.value = false
+                    _adminLoginError.value = "Unauthorized access. Only verified shop owners with 'admin' role can access this panel."
+                    showBanner("Unauthorized access")
+                    onUnauthorized()
+                }
+            } finally {
+                _isAdminLoading.value = false
             }
         }
     }
