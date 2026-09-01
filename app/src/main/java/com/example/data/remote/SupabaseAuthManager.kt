@@ -46,6 +46,27 @@ class SupabaseAuthManager(context: Context) {
         })
     }
 
+    /** Returns the authenticated user's Hafsa Traders role from Supabase. */
+    suspend fun currentUserRole(session: SupabaseUserSession = currentSession() ?: throw IllegalStateException("Not signed in")): String = withContext(Dispatchers.IO) {
+        check(isConfigured()) { "Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY." }
+        val encodedId = java.net.URLEncoder.encode(session.userId, "UTF-8")
+        val url = URL(baseUrl() + "/rest/v1/hafsa_profiles?select=role&id=eq." + encodedId)
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 20_000
+            readTimeout = 20_000
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+            setRequestProperty("Accept", "application/json")
+        }
+        val code = connection.responseCode
+        val text = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+        if (code !in 200..299) throw IllegalStateException("Could not verify account role ($code)")
+        val rows = org.json.JSONArray(text)
+        if (rows.length() == 0) throw IllegalStateException("Your Hafsa Traders profile was not found.")
+        rows.getJSONObject(0).optString("role").trim().lowercase().ifBlank { "customer" }
+    }
+
     private fun requestAuth(path: String, body: JSONObject): SupabaseUserSession {
         check(isConfigured()) { "Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY." }
         val connection = (URL(baseUrl() + path).openConnection() as HttpURLConnection).apply {

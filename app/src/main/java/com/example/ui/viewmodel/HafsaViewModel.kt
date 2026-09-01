@@ -458,17 +458,20 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
             _adminLoginError.value = "Enter your admin email and password."
             return
         }
-        val configuredEmail = getSettingValue("admin_email", "admin@hafsatraders.com").trim().lowercase()
-        if (cleanEmail != configuredEmail) {
-            _adminLoginError.value = "This Supabase account is not authorized as the store owner."
-            onUnauthorized()
-            return
-        }
         _isAdminLoading.value = true
         _adminLoginError.value = null
         viewModelScope.launch {
             try {
-                supabaseAuth.signIn(cleanEmail, password)
+                val session = supabaseAuth.signIn(cleanEmail, password)
+                val role = supabaseAuth.currentUserRole(session)
+                if (role != "admin") {
+                    supabaseAuth.signOut()
+                    _isAdminAuthenticated.value = false
+                    _isAdminLoading.value = false
+                    _adminLoginError.value = "This account is not authorized as the store owner."
+                    onUnauthorized()
+                    return@launch
+                }
                 _isAdminAuthenticated.value = true
                 _currentRole.value = AppRole.ADMIN
                 _adminTab.value = AdminTab.DASHBOARD

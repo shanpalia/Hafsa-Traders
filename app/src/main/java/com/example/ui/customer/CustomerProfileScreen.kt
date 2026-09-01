@@ -285,7 +285,10 @@ fun CustomerProfileScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(50.dp)
@@ -301,21 +304,26 @@ fun CustomerProfileScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = name.ifBlank { "Complete your profile" },
+                                    maxLines = 1,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = LightTextPrimary
                                 )
                                 Text(
                                     text = phone.ifBlank { "Add your mobile number" },
+                                    maxLines = 1,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = LightTextSecondary
                                 )
                             }
                         }
 
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Button(
+                            modifier = Modifier.height(52.dp),
                             onClick = {
                                 if (isEditing) {
                                     onSaveProfile(name, phone, email, address)
