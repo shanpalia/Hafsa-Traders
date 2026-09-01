@@ -73,7 +73,7 @@ class SupabaseOrderSync(
         syncOrders(getArray("orders?order=created_at.desc", token), token)
     }
 
-    private fun syncOrders(orders: JSONArray, token: String) {
+    private suspend fun syncOrders(orders: JSONArray, token: String) {
         for (i in 0 until orders.length()) {
             val j = orders.getJSONObject(i)
             val order = OrderEntity(
