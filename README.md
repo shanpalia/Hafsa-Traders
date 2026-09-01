@@ -64,3 +64,10 @@ Customer Profile includes a **Check for Updates** button. Configure `Website Upd
 }
 ```
 The app compares `version` with the installed app version. If newer, it shows **Update Now**; otherwise it shows that the app is up to date.
+
+
+## Order history and tracking
+- Customer Orders shows every order belonging to the signed-in customer account (Active, Completed and All filters).
+- Each order detail now shows a timestamped tracking history: Received -> Processing -> Ready for Pickup -> Completed.
+- Every admin status change creates a tracking event with the exact change time and a customer notification.
+- Cross-device, truly live tracking still requires a shared backend such as Firebase Firestore/Cloud Functions; Room tracking is real for status changes made in the same installed app/database.

@@ -19,12 +19,14 @@ import com.example.data.repository.OrderWithDetails
 import com.example.data.repository.UploadedFileDraft
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -41,10 +43,18 @@ enum class AdminTab {
     DASHBOARD, ORDERS, ITEMS, CATEGORIES, OFFERS, PAYMENTS, NOTIFICATIONS, SETTINGS
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HafsaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: HafsaRepository
     private val profilePrefs = application.getSharedPreferences("customer_profile", Context.MODE_PRIVATE)
+
+    // Logged-in customer identity. Every profile and order is scoped to this account.
+    private val _customerUserId = MutableStateFlow("")
+    val customerUserId: StateFlow<String> = _customerUserId.asStateFlow()
+
+    private val _isCustomerSignedIn = MutableStateFlow(false)
+    val isCustomerSignedIn: StateFlow<Boolean> = _isCustomerSignedIn.asStateFlow()
 
     // Customer profile state is declared before init so saved values can be loaded safely.
     private val _customerName = MutableStateFlow("")
@@ -62,10 +72,10 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val db = HafsaDatabase.getDatabase(application, viewModelScope)
         repository = HafsaRepository(db.hafsaDao())
-        _customerName.value = profilePrefs.getString("name", "") ?: ""
-        _customerPhone.value = profilePrefs.getString("phone", "") ?: ""
-        _customerEmail.value = profilePrefs.getString("email", "") ?: ""
-        _customerAddress.value = profilePrefs.getString("address", "") ?: ""
+        val existingUser = runCatching { FirebaseAuth.getInstance().currentUser }.getOrNull()
+        if (existingUser != null) {
+            setCustomerSession(existingUser.uid, existingUser.email.orEmpty())
+        }
     }
 
     // Role & Navigation
@@ -156,8 +166,12 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     val allOrders: StateFlow<List<OrderEntity>> = repository.allOrders
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Active Customer Orders (Current User)
-    val customerOrders: StateFlow<List<OrderEntity>> = repository.allOrders
+    // Active customer orders are strictly filtered by the currently logged-in account.
+    val customerOrders: StateFlow<List<OrderEntity>> = _customerUserId
+        .flatMapLatest { userId ->
+            if (userId.isBlank()) kotlinx.coroutines.flow.flowOf(emptyList())
+            else repository.getCustomerOrders(userId)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Selected Order Detail Inspection
@@ -168,8 +182,12 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     private val _lastPlacedOrder = MutableStateFlow<OrderEntity?>(null)
     val lastPlacedOrder: StateFlow<OrderEntity?> = _lastPlacedOrder.asStateFlow()
 
-    // Notifications
-    val customerNotifications: StateFlow<List<NotificationEntity>> = repository.getCustomerNotifications()
+    // Notifications are also scoped to the logged-in customer.
+    val customerNotifications: StateFlow<List<NotificationEntity>> = _customerUserId
+        .flatMapLatest { userId ->
+            if (userId.isBlank()) kotlinx.coroutines.flow.flowOf(emptyList())
+            else repository.getCustomerNotifications(userId)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val adminNotifications: StateFlow<List<NotificationEntity>> = repository.getAdminNotifications()
@@ -214,16 +232,33 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         _selectedCategoryId.value = categoryId
     }
 
+    fun setCustomerSession(userId: String, email: String) {
+        if (userId.isBlank()) return
+        _customerUserId.value = userId
+        _isCustomerSignedIn.value = true
+        _customerName.value = profilePrefs.getString("profile_${userId}_name", "") ?: ""
+        _customerPhone.value = profilePrefs.getString("profile_${userId}_phone", "") ?: ""
+        _customerEmail.value = email.ifBlank { profilePrefs.getString("profile_${userId}_email", "") ?: "" }
+        _customerAddress.value = profilePrefs.getString("profile_${userId}_address", "") ?: ""
+        profilePrefs.edit().putString("profile_${userId}_email", _customerEmail.value).apply()
+    }
+
     fun setCustomerDetails(name: String, phone: String, email: String, address: String) {
+        val userId = _customerUserId.value
+        if (userId.isBlank()) {
+            showBanner("Please log in before saving your profile.")
+            return
+        }
         _customerName.value = name.trim()
         _customerPhone.value = phone.trim()
-        _customerEmail.value = email.trim()
+        // Login email is the account identity; keep it tied to the signed-in account.
+        _customerEmail.value = email.trim().ifBlank { _customerEmail.value }
         _customerAddress.value = address.trim()
         profilePrefs.edit()
-            .putString("name", _customerName.value)
-            .putString("phone", _customerPhone.value)
-            .putString("email", _customerEmail.value)
-            .putString("address", _customerAddress.value)
+            .putString("profile_${userId}_name", _customerName.value)
+            .putString("profile_${userId}_phone", _customerPhone.value)
+            .putString("profile_${userId}_email", _customerEmail.value)
+            .putString("profile_${userId}_address", _customerAddress.value)
             .apply()
     }
 
@@ -313,7 +348,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val order = repository.placeOrder(
-                    userId = "cust_" + _customerPhone.value.filter { it.isDigit() }.takeLast(4).ifEmpty { "1001" },
+                    userId = _customerUserId.value.ifBlank { throw IllegalStateException("Please log in before placing an order") },
                     customerName = _customerName.value.ifBlank { "Customer" },
                     customerPhone = _customerPhone.value.ifBlank { "+91 98765 43210" },
                     customerEmail = _customerEmail.value,

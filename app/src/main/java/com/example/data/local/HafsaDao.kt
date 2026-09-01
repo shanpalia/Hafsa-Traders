@@ -110,6 +110,16 @@ interface HafsaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrderFiles(files: List<OrderFileEntity>)
 
+    // --- ORDER STATUS HISTORY ---
+    @Query("SELECT * FROM order_status_history WHERE orderId = :orderId ORDER BY changedAt ASC")
+    suspend fun getOrderStatusHistory(orderId: String): List<OrderStatusHistoryEntity>
+
+    @Query("SELECT * FROM order_status_history WHERE orderId = :orderId ORDER BY changedAt ASC")
+    fun getOrderStatusHistoryFlow(orderId: String): Flow<List<OrderStatusHistoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrderStatusHistory(history: OrderStatusHistoryEntity)
+
     // --- PAYMENTS ---
     @Query("SELECT * FROM payments WHERE orderId = :orderId ORDER BY createdAt DESC")
     suspend fun getPaymentsForOrder(orderId: String): List<PaymentEntity>
@@ -120,6 +130,9 @@ interface HafsaDao {
     // --- NOTIFICATIONS ---
     @Query("SELECT * FROM notifications WHERE recipientRole = :role OR recipientRole = 'ALL' ORDER BY createdAt DESC")
     fun getNotificationsForRole(role: String): Flow<List<NotificationEntity>>
+
+    @Query("SELECT * FROM notifications WHERE (recipientRole = 'CUSTOMER' AND userId = :userId) OR recipientRole = 'ALL' ORDER BY createdAt DESC")
+    fun getCustomerNotificationsForUser(userId: String): Flow<List<NotificationEntity>>
 
     @Query("SELECT * FROM notifications ORDER BY createdAt DESC")
     fun getAllNotifications(): Flow<List<NotificationEntity>>

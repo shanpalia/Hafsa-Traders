@@ -83,6 +83,15 @@ data class OrderFileEntity(
     val uploadedAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "order_status_history")
+data class OrderStatusHistoryEntity(
+    @PrimaryKey val id: String,
+    val orderId: String,
+    val status: String, // RECEIVED, PROCESSING, READY, COMPLETED, CANCELLED
+    val message: String,
+    val changedAt: Long = System.currentTimeMillis()
+)
+
 @Entity(tableName = "payments")
 data class PaymentEntity(
     @PrimaryKey val id: String,

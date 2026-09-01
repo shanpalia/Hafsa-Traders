@@ -41,7 +41,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun CustomerLoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (String, String) -> Unit,
     onBack: () -> Unit = {}
 ) {
     var isRegister by remember { mutableStateOf(false) }
@@ -164,7 +164,8 @@ fun CustomerLoginScreen(
                             loading = false
                             if (result.isSuccessful) {
                                 error = null
-                                onLoginSuccess()
+                                val user = auth.currentUser
+                                onLoginSuccess(user?.uid.orEmpty(), user?.email.orEmpty())
                             } else {
                                 error = result.exception?.localizedMessage
                                     ?: "Authentication failed. Please try again."

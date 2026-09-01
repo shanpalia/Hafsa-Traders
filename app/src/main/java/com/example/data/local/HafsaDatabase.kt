@@ -17,13 +17,14 @@ import kotlinx.coroutines.launch
         OrderEntity::class,
         OrderItemEntity::class,
         OrderFileEntity::class,
+        OrderStatusHistoryEntity::class,
         PaymentEntity::class,
         NotificationEntity::class,
         AdminSettingEntity::class,
         OfferEntity::class,
         OfferItemEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class HafsaDatabase : RoomDatabase() {

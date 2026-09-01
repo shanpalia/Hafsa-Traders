@@ -11,6 +11,7 @@ import com.example.data.local.OfferWithItems
 import com.example.data.local.OrderEntity
 import com.example.data.local.OrderFileEntity
 import com.example.data.local.OrderItemEntity
+import com.example.data.local.OrderStatusHistoryEntity
 import com.example.data.local.PaymentEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,8 @@ data class OrderWithDetails(
     val order: OrderEntity,
     val items: List<OrderItemEntity>,
     val files: List<OrderFileEntity>,
-    val payments: List<PaymentEntity>
+    val payments: List<PaymentEntity>,
+    val statusHistory: List<OrderStatusHistoryEntity> = emptyList()
 )
 
 data class CartItem(
@@ -121,7 +123,8 @@ class HafsaRepository(private val dao: HafsaDao) {
         val items = dao.getOrderItemsForOrder(orderId)
         val files = dao.getOrderFilesForOrder(orderId)
         val payments = dao.getPaymentsForOrder(orderId)
-        OrderWithDetails(order, items, files, payments)
+        val statusHistory = dao.getOrderStatusHistory(orderId)
+        OrderWithDetails(order, items, files, payments, statusHistory)
     }
 
     /**
@@ -249,6 +252,15 @@ class HafsaRepository(private val dao: HafsaDao) {
 
         // Save everything into Room
         dao.insertOrder(orderEntity)
+        dao.insertOrderStatusHistory(
+            OrderStatusHistoryEntity(
+                id = "osh_" + UUID.randomUUID().toString().take(8),
+                orderId = orderId,
+                status = "RECEIVED",
+                message = "Order received by Hafsa Traders",
+                changedAt = now
+            )
+        )
         dao.insertOrderItems(orderItemEntities)
         if (orderFileEntities.isNotEmpty()) {
             dao.insertOrderFiles(orderFileEntities)
@@ -290,7 +302,8 @@ class HafsaRepository(private val dao: HafsaDao) {
 
     suspend fun updateOrderStatus(orderId: String, newStatus: String) = withContext(Dispatchers.IO) {
         val order = dao.getOrderById(orderId) ?: return@withContext
-        dao.updateOrderStatus(orderId, newStatus)
+        val changedAt = System.currentTimeMillis()
+        dao.updateOrderStatus(orderId, newStatus, changedAt)
 
         // Customer Push Notification for Status Transition
         val statusMessage = when (newStatus) {
@@ -302,6 +315,16 @@ class HafsaRepository(private val dao: HafsaDao) {
             else -> "Status for order #${order.orderNumber} updated to $newStatus."
         }
 
+        dao.insertOrderStatusHistory(
+            OrderStatusHistoryEntity(
+                id = "osh_" + UUID.randomUUID().toString().take(8),
+                orderId = orderId,
+                status = newStatus,
+                message = statusMessage,
+                changedAt = changedAt
+            )
+        )
+
         val statusNotif = NotificationEntity(
             id = "notif_" + UUID.randomUUID().toString().take(8),
             recipientRole = "CUSTOMER",
@@ -312,7 +335,7 @@ class HafsaRepository(private val dao: HafsaDao) {
             orderNumber = order.orderNumber,
             type = "ORDER_STATUS",
             isRead = false,
-            createdAt = System.currentTimeMillis()
+            createdAt = changedAt
         )
         dao.insertNotification(statusNotif)
     }
@@ -322,7 +345,7 @@ class HafsaRepository(private val dao: HafsaDao) {
     }
 
     // --- NOTIFICATIONS ---
-    fun getCustomerNotifications(): Flow<List<NotificationEntity>> = dao.getNotificationsForRole("CUSTOMER")
+    fun getCustomerNotifications(userId: String): Flow<List<NotificationEntity>> = dao.getCustomerNotificationsForUser(userId)
     fun getAdminNotifications(): Flow<List<NotificationEntity>> = dao.getNotificationsForRole("ADMIN")
 
     suspend fun markNotificationRead(id: String) = withContext(Dispatchers.IO) {

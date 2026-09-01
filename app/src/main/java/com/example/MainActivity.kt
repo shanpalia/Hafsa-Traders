@@ -386,8 +386,7 @@ fun CustomerAppContainer(
                                 } else {
                                     coroutineScope.launch { callback(WebsiteUpdateChecker.check(endpoint, BuildConfig.VERSION_NAME)) }
                                 }
-                            },
-                            onAdminLogin = { navController.navigate("/admin") }
+                            }
                         )
                     }
                 }
@@ -412,7 +411,8 @@ fun CustomerAppContainer(
     // Customer authentication appears only when the user starts an order.
     if (showCustomerLogin) {
         CustomerLoginScreen(
-            onLoginSuccess = {
+            onLoginSuccess = { userId, email ->
+                viewModel.setCustomerSession(userId, email)
                 showCustomerLogin = false
                 val action = pendingOrderAction
                 pendingOrderAction = null

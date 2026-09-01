@@ -242,6 +242,81 @@ fun CustomerOrderCard(
     }
 }
 
+
+
+@Composable
+private fun OrderTrackingTimeline(
+    currentStatus: String,
+    history: List<com.example.data.local.OrderStatusHistoryEntity>,
+    placedAt: Long
+) {
+    val steps = listOf("RECEIVED", "PROCESSING", "READY", "COMPLETED")
+    val currentIndex = steps.indexOf(currentStatus).let { if (it < 0) 0 else it }
+    val dateFormat = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LightSurfaceVariant),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = if (currentStatus == "CANCELLED") "Order Tracking" else "Live Order Tracking",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = LightTextPrimary
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (currentStatus == "CANCELLED") {
+                val cancelled = history.lastOrNull { it.status == "CANCELLED" }
+                Text("Order cancelled", fontWeight = FontWeight.Bold, color = Color(0xFFB42318))
+                Text(
+                    cancelled?.message ?: "Please contact the shop for assistance.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LightTextSecondary
+                )
+                cancelled?.let {
+                    Text(dateFormat.format(Date(it.changedAt)), style = MaterialTheme.typography.labelSmall, color = LightTextTertiary)
+                }
+            } else {
+                steps.forEachIndexed { index, status ->
+                    val event = history.lastOrNull { it.status == status }
+                    val reached = index <= currentIndex
+                    val title = when (status) {
+                        "RECEIVED" -> "Order received"
+                        "PROCESSING" -> "In progress"
+                        "READY" -> "Ready for pickup"
+                        else -> "Picked up / completed"
+                    }
+                    val message = when {
+                        event != null -> event.message
+                        status == "RECEIVED" -> "Order submitted to Hafsa Traders"
+                        !reached -> "Waiting for this update"
+                        else -> "Status updated"
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                        Text(
+                            text = if (reached) "●" else "○",
+                            color = if (reached) BrandPrimary else LightTextTertiary,
+                            fontSize = 18.sp
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(title, fontWeight = if (reached) FontWeight.Bold else FontWeight.Medium, color = LightTextPrimary)
+                            Text(message, style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                            val timestamp = event?.changedAt ?: if (status == "RECEIVED") placedAt else null
+                            if (timestamp != null) {
+                                Text(dateFormat.format(Date(timestamp)), style = MaterialTheme.typography.labelSmall, color = LightTextTertiary)
+                            }
+                            if (index != steps.lastIndex) Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerOrderDetailBottomSheet(
@@ -292,6 +367,15 @@ fun CustomerOrderDetailBottomSheet(
             // Stepper
             item {
                 VisualOrderStepper(currentStatus = order.orderStatus)
+            }
+
+            // Live tracking timeline with actual status-change timestamps.
+            item {
+                OrderTrackingTimeline(
+                    currentStatus = order.orderStatus,
+                    history = orderDetails.statusHistory,
+                    placedAt = order.createdAt
+                )
             }
 
             // Ordered Items
