@@ -51,3 +51,16 @@ A truly automatic WhatsApp message to the shop owner requires a server-side What
 
 ### Customer push notification
 For a real notification even when the customer app is closed, configure Firebase Cloud Messaging and send an FCM message from a trusted backend whenever the admin changes an order to READY.
+
+
+## Website Update Check
+Customer Profile includes a **Check for Updates** button. Configure `Website Update Check URL` in Admin Settings to a public JSON endpoint, for example:
+```json
+{
+  "version": "1.1.0",
+  "updateUrl": "https://example.com/download/hafsa-traders.apk",
+  "required": false,
+  "message": "New features and fixes are available."
+}
+```
+The app compares `version` with the installed app version. If newer, it shows **Update Now**; otherwise it shows that the app is up to date.

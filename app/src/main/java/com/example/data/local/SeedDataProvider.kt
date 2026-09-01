@@ -35,6 +35,11 @@ object SeedDataProvider {
             AdminSettingEntity("upi_id", "hafsatraders@okhdfcbank"),
             AdminSettingEntity("upi_name", "Hafsa Traders"),
             AdminSettingEntity("admin_pin", "1234"),
+            AdminSettingEntity("admin_email", "admin@hafsatraders.com"),
+            AdminSettingEntity("app_update_version", "1.0.0"),
+            AdminSettingEntity("app_update_check_url", ""),
+            AdminSettingEntity("app_update_url", ""),
+            AdminSettingEntity("app_update_required", "false"),
             AdminSettingEntity("payment_gateway_enabled", "true"),
             AdminSettingEntity("upi_qr_enabled", "true"),
             AdminSettingEntity("counter_pay_enabled", "true")

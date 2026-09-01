@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AdminSettingEntity
@@ -43,10 +44,15 @@ enum class AdminTab {
 class HafsaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: HafsaRepository
+    private val profilePrefs = application.getSharedPreferences("customer_profile", Context.MODE_PRIVATE)
 
     init {
         val db = HafsaDatabase.getDatabase(application, viewModelScope)
         repository = HafsaRepository(db.hafsaDao())
+        _customerName.value = profilePrefs.getString("name", "") ?: ""
+        _customerPhone.value = profilePrefs.getString("phone", "") ?: ""
+        _customerEmail.value = profilePrefs.getString("email", "") ?: ""
+        _customerAddress.value = profilePrefs.getString("address", "") ?: ""
     }
 
     // Role & Navigation
@@ -133,16 +139,16 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     private val _specialInstructions = MutableStateFlow("")
     val specialInstructions: StateFlow<String> = _specialInstructions.asStateFlow()
 
-    private val _customerName = MutableStateFlow("Rahul Sharma")
+    private val _customerName = MutableStateFlow("")
     val customerName: StateFlow<String> = _customerName.asStateFlow()
 
-    private val _customerPhone = MutableStateFlow("+91 98112 34567")
+    private val _customerPhone = MutableStateFlow("")
     val customerPhone: StateFlow<String> = _customerPhone.asStateFlow()
 
-    private val _customerEmail = MutableStateFlow("rahul.sharma@example.com")
+    private val _customerEmail = MutableStateFlow("")
     val customerEmail: StateFlow<String> = _customerEmail.asStateFlow()
 
-    private val _customerAddress = MutableStateFlow("Shop pickup / Delhi")
+    private val _customerAddress = MutableStateFlow("")
     val customerAddress: StateFlow<String> = _customerAddress.asStateFlow()
 
     // Orders Flow
@@ -208,10 +214,16 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setCustomerDetails(name: String, phone: String, email: String, address: String) {
-        _customerName.value = name
-        _customerPhone.value = phone
-        _customerEmail.value = email
-        _customerAddress.value = address
+        _customerName.value = name.trim()
+        _customerPhone.value = phone.trim()
+        _customerEmail.value = email.trim()
+        _customerAddress.value = address.trim()
+        profilePrefs.edit()
+            .putString("name", _customerName.value)
+            .putString("phone", _customerPhone.value)
+            .putString("email", _customerEmail.value)
+            .putString("address", _customerAddress.value)
+            .apply()
     }
 
     fun setSpecialInstructions(instructions: String) {
@@ -376,6 +388,21 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
 
         _isAdminLoading.value = true
         _adminLoginError.value = null
+
+        // Offline/local fallback keeps the owner panel usable in APK builds before Firebase is configured.
+        // The owner can change the PIN and authorized email from Admin Settings after login.
+        val configuredPin = getSettingValue("admin_pin", "1234")
+        val configuredEmail = getSettingValue("admin_email", "").trim().lowercase()
+        if (password == configuredPin && (configuredEmail.isBlank() || cleanEmail == configuredEmail)) {
+            _isAdminAuthenticated.value = true
+            _adminLoginError.value = null
+            _currentRole.value = AppRole.ADMIN
+            _adminTab.value = AdminTab.DASHBOARD
+            _isAdminLoading.value = false
+            showBanner("Admin panel opened")
+            onSuccess()
+            return
+        }
 
         try {
             val auth = FirebaseAuth.getInstance()

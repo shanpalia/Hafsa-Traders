@@ -1,6 +1,8 @@
 package com.example
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -30,7 +32,10 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,17 +45,20 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +68,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.data.local.ItemEntity
+import com.example.data.update.WebsiteUpdateChecker
+import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
+import com.hafsatraders.app.BuildConfig
 import com.example.ui.admin.*
 import com.example.ui.components.HafsaHeader
 import com.example.ui.components.InAppNotificationBanner
@@ -193,8 +204,15 @@ fun CustomerAppContainer(
     val upiId = viewModel.getSettingValue("merchant_upi_id", "hafsatraders@okhdfcbank")
     val upiQrReference = viewModel.getSettingValue("merchant_upi_qr_reference", "")
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
+    val updateVersion = viewModel.getSettingValue("app_update_version", "1.0.0")
+    val updateUrl = viewModel.getSettingValue("app_update_url", "")
+    val updateRequired = viewModel.getSettingValue("app_update_required", "false").equals("true", true)
+    var showUpdatePrompt by remember(updateVersion, updateUrl) { mutableStateOf(isVersionNewer(updateVersion, BuildConfig.VERSION_NAME) && updateUrl.isNotBlank()) }
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val updateCheckUrl = viewModel.getSettingValue("app_update_check_url", "")
 
     // System back: close transient UI first, then return to Home; Home lets Android exit normally.
     BackHandler(enabled = !showCustomerLogin && (isCheckingOut || showOrderSuccess || selectedOrderDetail != null || itemForDetailSheet != null || offerForDetailSheet != null || customerTab != CustomerTab.HOME)) {
@@ -359,13 +377,36 @@ fun CustomerAppContainer(
                             shopName = shopName,
                             shopSubtitle = shopSubtitle,
                             shopAddress = shopAddress,
+                            currentAppVersion = BuildConfig.VERSION_NAME,
+                            updateCheckUrl = updateCheckUrl,
                             onSaveProfile = { n, p, e, a -> viewModel.setCustomerDetails(n, p, e, a) },
+                            onCheckForUpdate = { endpoint, callback ->
+                                if (endpoint.startsWith("OPEN:")) {
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(endpoint.removePrefix("OPEN:")))) }
+                                } else {
+                                    coroutineScope.launch { callback(WebsiteUpdateChecker.check(endpoint, BuildConfig.VERSION_NAME)) }
+                                }
+                            },
                             onAdminLogin = { navController.navigate("/admin") }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (showUpdatePrompt) {
+        AppUpdateDialog(
+            latestVersion = updateVersion,
+            required = updateRequired,
+            onUpdate = {
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateUrl))
+                    context.startActivity(intent)
+                }
+            },
+            onLater = { if (!updateRequired) showUpdatePrompt = false }
+        )
     }
 
     // Customer authentication appears only when the user starts an order.
@@ -467,6 +508,11 @@ fun AdminAppContainer(
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
     val adminEmail = viewModel.getSettingValue("admin_email", "admin@hafsatraders.com")
+    val adminPin = viewModel.getSettingValue("admin_pin", "1234")
+    val appUpdateVersion = viewModel.getSettingValue("app_update_version", "1.0.0")
+    val appUpdateCheckUrl = viewModel.getSettingValue("app_update_check_url", "")
+    val appUpdateUrl = viewModel.getSettingValue("app_update_url", "")
+    val appUpdateRequired = viewModel.getSettingValue("app_update_required", "false").equals("true", true)
     val isAdminLoading by viewModel.isAdminLoading.collectAsState()
 
     // System back in admin returns to the previous admin section, then exits admin.
@@ -649,6 +695,11 @@ fun AdminAppContainer(
                         shopAddress = shopAddress,
                         shopHours = shopHours,
                         adminEmail = adminEmail,
+                        adminPin = adminPin,
+                        appUpdateVersion = appUpdateVersion,
+                        appUpdateCheckUrl = appUpdateCheckUrl,
+                        appUpdateUrl = appUpdateUrl,
+                        appUpdateRequired = appUpdateRequired,
                         onSaveShopInfo = { n, s, p, w, a, h ->
                             viewModel.updateSetting("shop_name", n)
                             viewModel.updateSetting("shop_subtitle", s)
@@ -657,8 +708,15 @@ fun AdminAppContainer(
                             viewModel.updateSetting("shop_address", a)
                             viewModel.updateSetting("shop_hours", h)
                         },
-                        onUpdateAdminCredentials = { email, _ ->
+                        onUpdateAdminCredentials = { email, pin ->
                             viewModel.updateSetting("admin_email", email)
+                            if (pin.isNotBlank()) viewModel.updateSetting("admin_pin", pin)
+                        },
+                        onSaveAppUpdate = { version, checkUrl, url, required ->
+                            viewModel.updateSetting("app_update_version", version)
+                            viewModel.updateSetting("app_update_check_url", checkUrl)
+                            viewModel.updateSetting("app_update_url", url)
+                            viewModel.updateSetting("app_update_required", required.toString())
                         },
                         onLogout = {
                             viewModel.logoutAdmin()
@@ -965,5 +1023,37 @@ fun CustomerOfferDetailBottomSheet(
             }
         },
         confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+
+private fun isVersionNewer(latest: String, current: String): Boolean {
+    fun parts(value: String): List<Int> = value.substringBefore("-").split(".").map { it.toIntOrNull() ?: 0 }
+    val a = parts(latest)
+    val b = parts(current)
+    val max = maxOf(a.size, b.size)
+    for (i in 0 until max) {
+        val x = a.getOrElse(i) { 0 }
+        val y = b.getOrElse(i) { 0 }
+        if (x != y) return x > y
+    }
+    return false
+}
+
+@Composable
+private fun AppUpdateDialog(
+    latestVersion: String,
+    required: Boolean,
+    onUpdate: () -> Unit,
+    onLater: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!required) onLater() },
+        title = { Text(if (required) "Update required" else "New update available") },
+        text = { Text("Version $latestVersion is available. Update the Hafsa Traders app to get the latest features and fixes.") },
+        confirmButton = {
+            Button(onClick = onUpdate, colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)) { Text("UPDATE NOW") }
+        },
+        dismissButton = if (!required) ({ TextButton(onClick = onLater) { Text("LATER") } }) else null
     )
 }

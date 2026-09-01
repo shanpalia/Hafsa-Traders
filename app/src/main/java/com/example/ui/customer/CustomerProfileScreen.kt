@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Button
@@ -49,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.data.update.WebsiteUpdateResult
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -246,14 +249,20 @@ fun CustomerProfileScreen(
     shopName: String,
     shopSubtitle: String,
     shopAddress: String,
+    currentAppVersion: String,
+    updateCheckUrl: String,
     onSaveProfile: (String, String, String, String) -> Unit,
+    onCheckForUpdate: (String, (WebsiteUpdateResult) -> Unit) -> Unit,
     onAdminLogin: () -> Unit = {}
 ) {
-    var name by remember { mutableStateOf(customerName) }
-    var phone by remember { mutableStateOf(customerPhone) }
-    var email by remember { mutableStateOf(customerEmail) }
-    var address by remember { mutableStateOf(customerAddress) }
+    var name by remember(customerName) { mutableStateOf(customerName) }
+    var phone by remember(customerPhone) { mutableStateOf(customerPhone) }
+    var email by remember(customerEmail) { mutableStateOf(customerEmail) }
+    var address by remember(customerAddress) { mutableStateOf(customerAddress) }
     var isEditing by remember { mutableStateOf(false) }
+    var checkingUpdate by remember { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf<String?>(null) }
+    var updateAvailable by remember { mutableStateOf<com.example.data.update.WebsiteUpdateInfo?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -295,12 +304,12 @@ fun CustomerProfileScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = customerName,
+                                    text = name.ifBlank { "Complete your profile" },
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = LightTextPrimary
                                 )
                                 Text(
-                                    text = customerPhone,
+                                    text = phone.ifBlank { "Add your mobile number" },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = LightTextSecondary
                                 )
@@ -357,6 +366,69 @@ fun CustomerProfileScreen(
             }
         }
 
+        // Website update check
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().border(1.dp, LightBorder, RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(BrandPrimaryContainer), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = BrandPrimary)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("App Update", fontWeight = FontWeight.Bold, color = LightTextPrimary)
+                            Text("Current version: $currentAppVersion", style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Check Hafsa Traders website for the latest version.", style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            checkingUpdate = true
+                            updateStatus = null
+                            updateAvailable = null
+                            onCheckForUpdate(updateCheckUrl) { result ->
+                                checkingUpdate = false
+                                when (result) {
+                                    is WebsiteUpdateResult.UpdateAvailable -> {
+                                        updateAvailable = result.info
+                                        updateStatus = "New version ${result.info.version} is available."
+                                    }
+                                    WebsiteUpdateResult.UpToDate -> updateStatus = "Your app is already up to date."
+                                    is WebsiteUpdateResult.Error -> updateStatus = result.message
+                                }
+                            }
+                        },
+                        enabled = !checkingUpdate,
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (checkingUpdate) "Checking..." else "Check for Updates")
+                    }
+                    updateStatus?.let { status ->
+                        Spacer(Modifier.height(10.dp))
+                        Text(status, style = MaterialTheme.typography.bodySmall, color = if (updateAvailable != null) Color(0xFF15803D) else LightTextSecondary)
+                    }
+                    updateAvailable?.let { info ->
+                        Spacer(Modifier.height(10.dp))
+                        Text(info.message, style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                        Spacer(Modifier.height(10.dp))
+                        Button(onClick = { onCheckForUpdate("OPEN:${info.updateUrl}") { } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)), modifier = Modifier.fillMaxWidth()) {
+                            Text("Update Now")
+                        }
+                    }
+                }
+            }
+        }
+
         // About Hafsa Traders
         item {
             Card(
@@ -396,7 +468,7 @@ fun CustomerProfileScreen(
                                 color = LightTextPrimary
                             )
                             Text(
-                                "Chaman Chauraha Palia Kalan - 262902",
+                                shopAddress.ifBlank { "Shop address will be updated by the store" },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = LightTextSecondary
                             )

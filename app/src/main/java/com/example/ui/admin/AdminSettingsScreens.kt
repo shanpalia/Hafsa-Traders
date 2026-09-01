@@ -278,8 +278,14 @@ fun AdminShopSettingsScreen(
     shopAddress: String,
     shopHours: String,
     adminEmail: String,
+    adminPin: String,
+    appUpdateVersion: String,
+    appUpdateCheckUrl: String,
+    appUpdateUrl: String,
+    appUpdateRequired: Boolean,
     onSaveShopInfo: (name: String, subtitle: String, phone: String, wa: String, address: String, hours: String) -> Unit,
     onUpdateAdminCredentials: (email: String, password: String) -> Unit,
+    onSaveAppUpdate: (version: String, checkUrl: String, url: String, required: Boolean) -> Unit,
     onLogout: () -> Unit
 ) {
     var name by remember { mutableStateOf(shopName) }
@@ -290,6 +296,10 @@ fun AdminShopSettingsScreen(
     var hours by remember { mutableStateOf(shopHours) }
     var emailInput by remember { mutableStateOf(adminEmail) }
     var newPassword by remember { mutableStateOf("") }
+    var updateVersion by remember { mutableStateOf(appUpdateVersion) }
+    var updateCheckUrl by remember { mutableStateOf(appUpdateCheckUrl) }
+    var updateUrl by remember { mutableStateOf(appUpdateUrl) }
+    var updateRequired by remember { mutableStateOf(appUpdateRequired) }
 
     LazyColumn(
         modifier = Modifier
@@ -411,7 +421,7 @@ fun AdminShopSettingsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Security, contentDescription = null, tint = BrandPrimary)
                         Spacer(Modifier.width(8.dp))
-                        Text("Firebase Admin Authorization", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text("Admin Access", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -425,25 +435,25 @@ fun AdminShopSettingsScreen(
                                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Firebase Auth Integrated",
+                                    text = "Admin access configuration",
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                     color = Color(0xFF1E40AF)
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Admin email: shanpalia786@gmail.com",
+                                text = "Authorized email can be changed below",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF1E3A8A)
                             )
                             Text(
-                                text = "Required claim: admin === true",
+                                text = "Local PIN works when Firebase is not configured",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF1E3A8A)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Passwords and roles are handled securely via Firebase Authentication backend. No passwords stored locally.",
+                                text = "For production multi-device access, configure Firebase Authentication and backend role checks.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF3B82F6)
                             )
@@ -463,10 +473,24 @@ fun AdminShopSettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Admin PIN (leave blank to keep current PIN)") },
+                        placeholder = { Text("Current PIN is configured by owner") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Button(
                         onClick = {
                             if (emailInput.isNotBlank()) {
-                                onUpdateAdminCredentials(emailInput, "")
+                                onUpdateAdminCredentials(emailInput, newPassword)
+                                newPassword = ""
                             }
                         },
                         enabled = emailInput.isNotBlank(),
@@ -476,6 +500,37 @@ fun AdminShopSettingsScreen(
                     ) {
                         Text("Save Authorized Admin Email")
                     }
+                }
+            }
+        }
+
+        // App Update Flow
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().border(1.dp, LightBorder, RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text("App Update", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Set a website JSON URL so customers can manually check the latest version from their Profile. Example response: { version, updateUrl, required }.", style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(value = updateVersion, onValueChange = { updateVersion = it }, label = { Text("Latest App Version") }, placeholder = { Text("Example: 1.1.0") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(value = updateCheckUrl, onValueChange = { updateCheckUrl = it }, label = { Text("Website Update Check URL") }, placeholder = { Text("https://yourwebsite.com/hafsa-update.json") }, modifier = Modifier.fillMaxWidth(), minLines = 2, shape = RoundedCornerShape(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(value = updateUrl, onValueChange = { updateUrl = it }, label = { Text("Update / APK URL") }, modifier = Modifier.fillMaxWidth(), minLines = 2, shape = RoundedCornerShape(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Force update", fontWeight = FontWeight.Medium)
+                            Text("Customer cannot dismiss the update prompt", style = MaterialTheme.typography.bodySmall, color = LightTextSecondary)
+                        }
+                        Switch(checked = updateRequired, onCheckedChange = { updateRequired = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = BrandPrimary))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Button(onClick = { onSaveAppUpdate(updateVersion.trim(), updateCheckUrl.trim(), updateUrl.trim(), updateRequired) }, colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("Save Update Settings") }
                 }
             }
         }
