@@ -405,7 +405,7 @@ fun CheckoutScreen(
                         OutlinedTextField(
                             value = address,
                             onValueChange = { address = it },
-                            label = { Text("Shop Pickup or Delivery Note (Optional)") },
+                            label = { Text("Pickup Note (Optional)") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp)
                         )

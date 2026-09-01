@@ -16,19 +16,18 @@ View your app in AI Studio: https://ai.studio/apps/49ffe48e-35a3-43a8-a61c-1de13
 1. Open Android Studio
 2. Select **Open** and choose the directory containing this project
 3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Configure any required Gemini/API secrets through CodeMagic environment variables or the appropriate secure secrets mechanism; do not commit API keys to GitHub.
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
-7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.
+4. If you want Firebase customer/admin login, add your own `app/google-services.json` from your Firebase project (this file is intentionally not included in the ZIP).
+5. Run the app on an emulator or physical device.
+6. For a release APK, use the included CodeMagic workflow and configure the signing environment variables/profile there.
 
 
 ## Admin login
 
-The customer Profile screen now has a visible Admin Login entry. The login uses the locally configured `admin_email`, `admin_password`, and `admin_role` settings. Default credentials are `admin@hafsatraders.com` / `admin123`; change them from Admin Settings after first login.
+The customer Profile screen contains an Admin Login entry. Admin access uses Firebase Authentication plus a Firestore `admins/{uid}` document with `role: "admin"` and `active: true`. Add your own Firebase configuration before using online admin login.
 
 ## CodeMagic
 
-Use `codemagic.yaml`. The workflows download Gradle 9.3.1 explicitly, so they do not depend on the preinstalled Gradle version.
+Use `codemagic.yaml`. The workflow downloads Gradle 9.3.1 explicitly, so it does not depend on a preinstalled Gradle version.
 
 
 ## UI fixes in this build
@@ -36,3 +35,19 @@ Use `codemagic.yaml`. The workflows download Gradle 9.3.1 explicitly, so they do
 - Android system Back closes sheets/forms, returns to the previous section, and exits from Home.
 - New green/cream rounded Hafsa Traders launcher icon.
 - Release workflow outputs only a signed `hafsatraders.apk`.
+
+## Fixes applied
+- Removed the Google Services Gradle plugin from the build so the project can compile even when `google-services.json` is not present in the ZIP. Firebase dependencies remain available; runtime Firebase login still requires the user's own Firebase configuration.
+- Simplified `compileSdk` configuration for better Android Gradle Plugin compatibility.
+- Aligned the KSP plugin version with the Kotlin 2.2.10 compiler line.
+- Added a `.gitignore` to prevent signing keys, Firebase config, local SDK paths and build output from being accidentally published.
+
+
+## Pickup-only production workflow
+Admin controls service categories, services, prices, shop address, phone/WhatsApp and UPI settings from the Admin panel. Orders contain uploaded document/photo URIs and can be opened from the order detail screen. Marking an order READY creates the customer message: "Your order is ready. Please visit the shop and pick up your order."
+
+### WhatsApp notification
+A truly automatic WhatsApp message to the shop owner requires a server-side WhatsApp Business Platform integration (Meta Cloud API or an approved provider). A normal Android app cannot silently send a WhatsApp message in the background without user interaction. For production, send each new order to a backend/Cloud Function and call the WhatsApp Business API from there.
+
+### Customer push notification
+For a real notification even when the customer app is closed, configure Firebase Cloud Messaging and send an FCM message from a trusted backend whenever the admin changes an order to READY.

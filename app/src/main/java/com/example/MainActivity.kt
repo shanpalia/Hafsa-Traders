@@ -191,6 +191,7 @@ fun CustomerAppContainer(
     val shopAddress = viewModel.getSettingValue("shop_address", "Chaman Chauraha Palia Kalan - 262902")
     val shopHours = viewModel.getSettingValue("shop_hours", "Mon-Sat: 8:30 AM - 9:30 PM | Sun: 10:00 AM - 6:00 PM")
     val upiId = viewModel.getSettingValue("merchant_upi_id", "hafsatraders@okhdfcbank")
+    val upiQrReference = viewModel.getSettingValue("merchant_upi_qr_reference", "")
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
@@ -461,6 +462,7 @@ fun AdminAppContainer(
     val shopAddress = viewModel.getSettingValue("shop_address", "Chaman Chauraha Palia Kalan - 262902")
     val shopHours = viewModel.getSettingValue("shop_hours", "Mon-Sat: 8:30 AM - 9:30 PM | Sun: 10:00 AM - 6:00 PM")
     val upiId = viewModel.getSettingValue("merchant_upi_id", "hafsatraders@okhdfcbank")
+    val upiQrReference = viewModel.getSettingValue("merchant_upi_qr_reference", "")
     val upiName = viewModel.getSettingValue("merchant_upi_name", "Hafsa Traders Print Shop")
 
     val bannerMessage by viewModel.bannerMessage.collectAsState()
@@ -620,9 +622,11 @@ fun AdminAppContainer(
                     AdminPaymentSettingsScreen(
                         currentUpiId = upiId,
                         currentUpiName = upiName,
-                        onSaveUpi = { id, name ->
+                        currentQrReference = upiQrReference,
+                        onSaveUpi = { id, name, qrRef ->
                             viewModel.updateSetting("merchant_upi_id", id)
                             viewModel.updateSetting("merchant_upi_name", name)
+                            viewModel.updateSetting("merchant_upi_qr_reference", qrRef)
                         }
                     )
                 }

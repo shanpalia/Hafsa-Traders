@@ -1,5 +1,8 @@
 package com.example.ui.admin
 
+import android.content.Intent
+import android.net.Uri
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -352,6 +356,8 @@ fun AdminOrderDetailBottomSheet(
     onUpdateStatus: (String, String) -> Unit,
     onUpdatePayment: (String, String, String) -> Unit
 ) {
+    val context = LocalContext.current
+
     if (orderDetails == null) return
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -615,7 +621,15 @@ fun AdminOrderDetailBottomSheet(
                                         }
 
                                         Button(
-                                            onClick = {},
+                                            onClick = {
+                                                try {
+                                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                        setDataAndType(Uri.parse(file.fileUri), if (file.fileType.equals("PDF", true)) "application/pdf" else "image/*")
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    }
+                                                    context.startActivity(Intent.createChooser(intent, "Open ${file.fileName}"))
+                                                } catch (_: Exception) { }
+                                            },
                                             colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                                             shape = RoundedCornerShape(6.dp),
                                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)

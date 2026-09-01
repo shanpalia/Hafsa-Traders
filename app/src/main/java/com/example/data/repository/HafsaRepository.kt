@@ -296,7 +296,7 @@ class HafsaRepository(private val dao: HafsaDao) {
         val statusMessage = when (newStatus) {
             "RECEIVED" -> "Your Hafsa Traders order #${order.orderNumber} has been received."
             "PROCESSING" -> "Your order #${order.orderNumber} is now being printed and processed."
-            "READY" -> "Your order #${order.orderNumber} is ready for pickup at the shop counter! 🎁"
+            "READY" -> "Your order is ready. Please visit the shop and pick up your order. Order #${order.orderNumber} 🎉"
             "COMPLETED" -> "Your order #${order.orderNumber} has been completed and delivered. Thank you!"
             "CANCELLED" -> "Your order #${order.orderNumber} has been cancelled. Please contact shop for assistance."
             else -> "Status for order #${order.orderNumber} updated to $newStatus."

@@ -68,10 +68,12 @@ import java.util.Locale
 fun AdminPaymentSettingsScreen(
     currentUpiId: String,
     currentUpiName: String,
-    onSaveUpi: (String, String) -> Unit
+    currentQrReference: String,
+    onSaveUpi: (String, String, String) -> Unit
 ) {
     var upiId by remember { mutableStateOf(currentUpiId) }
     var upiName by remember { mutableStateOf(currentUpiName) }
+    var qrReference by remember { mutableStateOf(currentQrReference) }
     var qrEnabled by remember { mutableStateOf(true) }
     var cashEnabled by remember { mutableStateOf(true) }
 
@@ -191,10 +193,21 @@ fun AdminPaymentSettingsScreen(
                         shape = RoundedCornerShape(8.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = qrReference,
+                        onValueChange = { qrReference = it },
+                        label = { Text("UPI QR Image / Reference (optional)") },
+                        placeholder = { Text("Paste saved QR image reference or UPI QR details") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = { onSaveUpi(upiId, upiName) },
+                        onClick = { onSaveUpi(upiId, upiName, qrReference) },
                         colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
