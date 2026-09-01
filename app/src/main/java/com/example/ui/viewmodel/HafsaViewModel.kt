@@ -46,6 +46,19 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: HafsaRepository
     private val profilePrefs = application.getSharedPreferences("customer_profile", Context.MODE_PRIVATE)
 
+    // Customer profile state is declared before init so saved values can be loaded safely.
+    private val _customerName = MutableStateFlow("")
+    val customerName: StateFlow<String> = _customerName.asStateFlow()
+
+    private val _customerPhone = MutableStateFlow("")
+    val customerPhone: StateFlow<String> = _customerPhone.asStateFlow()
+
+    private val _customerEmail = MutableStateFlow("")
+    val customerEmail: StateFlow<String> = _customerEmail.asStateFlow()
+
+    private val _customerAddress = MutableStateFlow("")
+    val customerAddress: StateFlow<String> = _customerAddress.asStateFlow()
+
     init {
         val db = HafsaDatabase.getDatabase(application, viewModelScope)
         repository = HafsaRepository(db.hafsaDao())
@@ -138,18 +151,6 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     // Order Instructions & Customer Details
     private val _specialInstructions = MutableStateFlow("")
     val specialInstructions: StateFlow<String> = _specialInstructions.asStateFlow()
-
-    private val _customerName = MutableStateFlow("")
-    val customerName: StateFlow<String> = _customerName.asStateFlow()
-
-    private val _customerPhone = MutableStateFlow("")
-    val customerPhone: StateFlow<String> = _customerPhone.asStateFlow()
-
-    private val _customerEmail = MutableStateFlow("")
-    val customerEmail: StateFlow<String> = _customerEmail.asStateFlow()
-
-    private val _customerAddress = MutableStateFlow("")
-    val customerAddress: StateFlow<String> = _customerAddress.asStateFlow()
 
     // Orders Flow
     val allOrders: StateFlow<List<OrderEntity>> = repository.allOrders
