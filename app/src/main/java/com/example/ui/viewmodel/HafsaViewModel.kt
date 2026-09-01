@@ -17,8 +17,9 @@ import com.example.data.repository.CartItem
 import com.example.data.repository.HafsaRepository
 import com.example.data.repository.OrderWithDetails
 import com.example.data.repository.UploadedFileDraft
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import com.example.data.remote.FirebaseCatalogSync
+import com.example.data.remote.SupabaseAuthManager
+import com.example.data.remote.SupabaseOrderSync
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.util.UUID
 
 enum class AppRole {
@@ -47,6 +49,9 @@ enum class AdminTab {
 class HafsaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: HafsaRepository
+    private lateinit var catalogSync: FirebaseCatalogSync
+    private lateinit var supabaseAuth: SupabaseAuthManager
+    private lateinit var supabaseOrderSync: SupabaseOrderSync
     private val profilePrefs = application.getSharedPreferences("customer_profile", Context.MODE_PRIVATE)
 
     // Logged-in customer identity. Every profile and order is scoped to this account.
@@ -72,9 +77,24 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val db = HafsaDatabase.getDatabase(application, viewModelScope)
         repository = HafsaRepository(db.hafsaDao())
-        val existingUser = runCatching { FirebaseAuth.getInstance().currentUser }.getOrNull()
-        if (existingUser != null) {
-            setCustomerSession(existingUser.uid, existingUser.email.orEmpty())
+        catalogSync = FirebaseCatalogSync(application.applicationContext, db.hafsaDao(), viewModelScope)
+        catalogSync.startListening()
+        supabaseAuth = SupabaseAuthManager(application.applicationContext)
+        supabaseOrderSync = SupabaseOrderSync(application.applicationContext, db.hafsaDao(), supabaseAuth)
+        supabaseAuth.currentSession()?.let { session ->
+            setCustomerSession(session.userId, session.email)
+        }
+        // Lightweight live polling keeps order status synchronized across customer/admin devices.
+        if (supabaseOrderSync.isConfigured()) {
+            viewModelScope.launch {
+                while (true) {
+                    delay(5_000)
+                    runCatching {
+                        if (_isAdminAuthenticated.value) supabaseOrderSync.pullAllOrders()
+                        else _customerUserId.value.takeIf { it.isNotBlank() }?.let { supabaseOrderSync.pullOrdersForUser(it) }
+                    }
+                }
+            }
         }
     }
 
@@ -241,6 +261,12 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         _customerEmail.value = email.ifBlank { profilePrefs.getString("profile_${userId}_email", "") ?: "" }
         _customerAddress.value = profilePrefs.getString("profile_${userId}_address", "") ?: ""
         profilePrefs.edit().putString("profile_${userId}_email", _customerEmail.value).apply()
+        if (supabaseOrderSync.isConfigured()) {
+            viewModelScope.launch {
+                runCatching { supabaseOrderSync.pullOrdersForUser(userId) }
+                    .onFailure { showBanner("Order sync: ${it.message}") }
+            }
+        }
     }
 
     fun setCustomerDetails(name: String, phone: String, email: String, address: String) {
@@ -360,6 +386,11 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
                     paymentStatus = paymentStatus,
                     paymentRef = paymentRef
                 )
+                if (supabaseOrderSync.isConfigured()) {
+                    val details = repository.getOrderWithDetails(order.id)
+                        ?: throw IllegalStateException("Order details could not be prepared for sync")
+                    supabaseOrderSync.pushOrder(details)
+                }
                 _lastPlacedOrder.value = order
                 clearCart()
                 onSuccess(order)
@@ -386,6 +417,13 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun updateOrderStatus(orderId: String, newStatus: String) {
         viewModelScope.launch {
             repository.updateOrderStatus(orderId, newStatus)
+            if (supabaseOrderSync.isConfigured()) {
+                val details = repository.getOrderWithDetails(orderId)
+                    ?: throw IllegalStateException("Order not found")
+                val latestHistory = details.statusHistory.lastOrNull()
+                    ?: throw IllegalStateException("Status history not found")
+                supabaseOrderSync.pushOrderStatus(details.order, latestHistory)
+            }
             // Refresh current inspection view if opened
             _selectedOrderDetail.value?.let { current ->
                 if (current.order.id == orderId) {
@@ -408,8 +446,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Admin Authentication: Firebase Email/Password + Firestore admin role.
-    // Required Firestore document: admins/{uid} with { role: "admin", active: true }.
+    // Admin Authentication through Supabase Auth. The admin email must be the authorized store owner.
     fun loginAdmin(
         email: String,
         password: String,
@@ -421,95 +458,36 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
             _adminLoginError.value = "Enter your admin email and password."
             return
         }
-
-        _isAdminLoading.value = true
-        _adminLoginError.value = null
-
-        // Offline/local fallback keeps the owner panel usable in APK builds before Firebase is configured.
-        // The owner can change the PIN and authorized email from Admin Settings after login.
-        val configuredPin = getSettingValue("admin_pin", "1234")
-        val configuredEmail = getSettingValue("admin_email", "").trim().lowercase()
-        if (password == configuredPin && (configuredEmail.isBlank() || cleanEmail == configuredEmail)) {
-            _isAdminAuthenticated.value = true
-            _adminLoginError.value = null
-            _currentRole.value = AppRole.ADMIN
-            _adminTab.value = AdminTab.DASHBOARD
-            _isAdminLoading.value = false
-            showBanner("Admin panel opened")
-            onSuccess()
+        val configuredEmail = getSettingValue("admin_email", "admin@hafsatraders.com").trim().lowercase()
+        if (cleanEmail != configuredEmail) {
+            _adminLoginError.value = "This Supabase account is not authorized as the store owner."
+            onUnauthorized()
             return
         }
-
-        try {
-            val auth = FirebaseAuth.getInstance()
-            auth.signInWithEmailAndPassword(cleanEmail, password)
-                .addOnCompleteListener { authTask ->
-                    if (!authTask.isSuccessful) {
-                        _isAdminLoading.value = false
-                        _isAdminAuthenticated.value = false
-                        _adminLoginError.value = authTask.exception?.localizedMessage
-                            ?: "Invalid admin email or password."
-                        showBanner("Admin login failed")
-                        return@addOnCompleteListener
-                    }
-
-                    val user = auth.currentUser
-                    if (user == null) {
-                        _isAdminLoading.value = false
-                        _isAdminAuthenticated.value = false
-                        _adminLoginError.value = "Firebase authentication failed. Please try again."
-                        return@addOnCompleteListener
-                    }
-
-                    FirebaseFirestore.getInstance()
-                        .collection("admins")
-                        .document(user.uid)
-                        .get()
-                        .addOnSuccessListener { document ->
-                            val role = document.getString("role")?.trim()?.lowercase()
-                            val active = document.getBoolean("active") ?: false
-
-                            if (role == "admin" && active) {
-                                _isAdminAuthenticated.value = true
-                                _adminLoginError.value = null
-                                _currentRole.value = AppRole.ADMIN
-                                _adminTab.value = AdminTab.DASHBOARD
-                                _isAdminLoading.value = false
-                                showBanner("Admin authenticated successfully")
-                                onSuccess()
-                            } else {
-                                auth.signOut()
-                                _isAdminAuthenticated.value = false
-                                _isAdminLoading.value = false
-                                _adminLoginError.value = "This Firebase account is not authorized as an active admin."
-                                showBanner("Unauthorized admin account")
-                                onUnauthorized()
-                            }
-                        }
-                        .addOnFailureListener { error ->
-                            auth.signOut()
-                            _isAdminAuthenticated.value = false
-                            _isAdminLoading.value = false
-                            _adminLoginError.value = error.localizedMessage
-                                ?: "Unable to verify admin role."
-                            showBanner("Admin role verification failed")
-                        }
-                }
-                .addOnFailureListener { error ->
-                    _isAdminLoading.value = false
-                    _isAdminAuthenticated.value = false
-                    _adminLoginError.value = error.localizedMessage
-                        ?: "Unable to connect to Firebase Authentication."
-                }
-        } catch (error: Exception) {
-            _isAdminLoading.value = false
-            _isAdminAuthenticated.value = false
-            _adminLoginError.value = "Firebase is not configured. Add google-services.json to the app."
+        _isAdminLoading.value = true
+        _adminLoginError.value = null
+        viewModelScope.launch {
+            try {
+                supabaseAuth.signIn(cleanEmail, password)
+                _isAdminAuthenticated.value = true
+                _currentRole.value = AppRole.ADMIN
+                _adminTab.value = AdminTab.DASHBOARD
+                _isAdminLoading.value = false
+                if (supabaseOrderSync.isConfigured()) runCatching { supabaseOrderSync.pullAllOrders() }
+                showBanner("Admin panel opened")
+                onSuccess()
+            } catch (e: Exception) {
+                _isAdminAuthenticated.value = false
+                _isAdminLoading.value = false
+                _adminLoginError.value = e.message ?: "Admin authentication failed."
+                showBanner("Admin login failed")
+                onUnauthorized()
+            }
         }
     }
 
     fun logoutAdmin() {
-        runCatching { FirebaseAuth.getInstance().signOut() }
+        supabaseAuth.signOut()
         _isAdminAuthenticated.value = false
         _currentRole.value = AppRole.CUSTOMER
         _customerTab.value = CustomerTab.HOME
@@ -540,6 +518,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
                 uploadRequired = uploadRequired,
                 iconName = iconName
             )
+            catalogSync.publishFromLocal()
             showBanner("Service '$name' added successfully")
         }
     }
@@ -547,6 +526,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun updateItem(item: ItemEntity) {
         viewModelScope.launch {
             repository.updateItem(item)
+            catalogSync.publishFromLocal()
             showBanner("Service '${item.name}' updated")
         }
     }
@@ -554,6 +534,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun updateItemPrice(itemId: String, newPrice: Double) {
         viewModelScope.launch {
             repository.updateItemPrice(itemId, newPrice)
+            catalogSync.publishFromLocal()
             showBanner("Price updated to ₹${newPrice.toInt()}")
         }
     }
@@ -562,6 +543,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val newStatus = !item.isActive
             repository.setItemActive(item.id, newStatus)
+            catalogSync.publishFromLocal()
             showBanner("${item.name} is now ${if (newStatus) "Active" else "Disabled"}")
         }
     }
@@ -569,6 +551,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteItem(itemId: String, itemName: String) {
         viewModelScope.launch {
             repository.deleteItem(itemId)
+            catalogSync.publishFromLocal()
             showBanner("Deleted '$itemName'")
         }
     }
@@ -577,6 +560,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun addCategory(name: String, icon: String) {
         viewModelScope.launch {
             repository.addCategory(name, icon)
+            catalogSync.publishFromLocal()
             showBanner("Category '$name' created")
         }
     }
@@ -584,6 +568,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun updateCategory(category: CategoryEntity) {
         viewModelScope.launch {
             repository.updateCategory(category)
+            catalogSync.publishFromLocal()
             showBanner("Category '${category.name}' updated")
         }
     }
@@ -591,6 +576,7 @@ class HafsaViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteCategory(categoryId: String, categoryName: String) {
         viewModelScope.launch {
             repository.deleteCategory(categoryId)
+            catalogSync.publishFromLocal()
             showBanner("Category '$categoryName' deleted")
         }
     }

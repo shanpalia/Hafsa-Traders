@@ -149,9 +149,9 @@ class HafsaRepository(private val dao: HafsaDao) {
         paymentStatus: String,
         paymentRef: String
     ): OrderEntity = withContext(Dispatchers.IO) {
-        val existingOrders = dao.getAllOrders().first()
-        val nextSeq = 10001 + existingOrders.size
-        val orderNumber = "HT$nextSeq"
+        // Online orders can be created on multiple phones, so a local sequential count can collide.
+        // Use a timestamp + short random suffix for a globally unique, customer-friendly number.
+        val orderNumber = "HT" + System.currentTimeMillis().toString().takeLast(9) + UUID.randomUUID().toString().take(3).uppercase()
         val orderId = "order_" + UUID.randomUUID().toString().take(8)
 
         // Backend Price Verification & Snapshot Freezing (Re-checks active offers at current timestamp)

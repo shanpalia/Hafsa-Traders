@@ -5,6 +5,12 @@ plugins {
   alias(libs.plugins.roborazzi)
 }
 
+// Apply Google Services only when a real Firebase config is supplied.
+// This keeps local/Codemagic builds working before the config file is added.
+if (file("google-services.json").exists()) {
+  apply(plugin = "com.google.gms.google-services")
+}
+
 android {
   namespace = "com.hafsatraders.app"
   compileSdk = 36
@@ -15,6 +21,12 @@ android {
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"
+
+    // Supabase values are injected from gradle.properties or CI secrets.
+    val supabaseUrl = providers.gradleProperty("SUPABASE_URL").orElse("").get()
+    val supabaseAnonKey = providers.gradleProperty("SUPABASE_ANON_KEY").orElse("").get()
+    buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+    buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

@@ -37,7 +37,9 @@ import com.example.ui.theme.BrandPrimaryContainer
 import com.example.ui.theme.LightBackground
 import com.example.ui.theme.LightTextPrimary
 import com.example.ui.theme.LightTextSecondary
-import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.remote.SupabaseAuthManager
+import kotlinx.coroutines.launch
 
 @Composable
 fun CustomerLoginScreen(
@@ -50,6 +52,9 @@ fun CustomerLoginScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val authManager = remember(context) { SupabaseAuthManager(context.applicationContext) }
+    val scope = rememberCoroutineScope()
 
     BackHandler { onBack() }
 
@@ -97,7 +102,7 @@ fun CustomerLoginScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Login is required to place and track orders.",
+                    text = "Secure Supabase login is required to place and track your orders.",
                     style = MaterialTheme.typography.bodySmall,
                     color = LightTextSecondary
                 )
@@ -150,25 +155,19 @@ fun CustomerLoginScreen(
                         if (error != null) return@Button
 
                         loading = true
-                        val auth = try { FirebaseAuth.getInstance() } catch (_: Exception) {
-                            loading = false
-                            error = "Firebase is not configured. Add google-services.json to the app."
-                            return@Button
-                        }
-                        val task = if (isRegister) {
-                            auth.createUserWithEmailAndPassword(cleanEmail, password)
-                        } else {
-                            auth.signInWithEmailAndPassword(cleanEmail, password)
-                        }
-                        task.addOnCompleteListener { result ->
-                            loading = false
-                            if (result.isSuccessful) {
+                        scope.launch {
+                            try {
+                                val session = if (isRegister) {
+                                    authManager.signUp(cleanEmail, password)
+                                } else {
+                                    authManager.signIn(cleanEmail, password)
+                                }
+                                loading = false
                                 error = null
-                                val user = auth.currentUser
-                                onLoginSuccess(user?.uid.orEmpty(), user?.email.orEmpty())
-                            } else {
-                                error = result.exception?.localizedMessage
-                                    ?: "Authentication failed. Please try again."
+                                onLoginSuccess(session.userId, session.email)
+                            } catch (e: Exception) {
+                                loading = false
+                                error = e.message ?: "Supabase authentication failed. Please try again."
                             }
                         }
                     },

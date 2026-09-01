@@ -140,7 +140,7 @@ fun AdminLoginScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Authorized store owner credentials required. Role verification (role = admin) enforced.",
+                    text = "Authorized store owner credentials required. Sign in with the admin email and password configured in Admin Settings.",
                     style = MaterialTheme.typography.bodySmall,
                     color = LightTextSecondary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center

@@ -70,7 +70,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.data.local.ItemEntity
 import com.example.data.update.WebsiteUpdateChecker
 import kotlinx.coroutines.launch
-import com.google.firebase.auth.FirebaseAuth
 import com.hafsatraders.app.BuildConfig
 import com.example.ui.admin.*
 import com.example.ui.components.HafsaHeader
@@ -158,9 +157,10 @@ fun CustomerAppContainer(
     var itemForDetailSheet by remember { mutableStateOf<ItemEntity?>(null) }
     var offerForDetailSheet by remember { mutableStateOf<com.example.data.local.OfferWithItems?>(null) }
 
+    val isCustomerSignedIn by viewModel.isCustomerSignedIn.collectAsState()
+
     fun requireCustomerLogin(action: () -> Unit) {
-        val signedIn = runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)
-        if (signedIn) {
+        if (isCustomerSignedIn) {
             action()
         } else {
             pendingOrderAction = action
@@ -174,6 +174,7 @@ fun CustomerAppContainer(
     val categories by viewModel.allCategories.collectAsState()
     val activeCategories by viewModel.activeCategories.collectAsState()
     val filteredItems by viewModel.filteredItems.collectAsState()
+    val activeItems by viewModel.activeItems.collectAsState()
     val activeOffers by viewModel.activeOffersWithItems.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCatId by viewModel.selectedCategoryId.collectAsState()
@@ -322,6 +323,7 @@ fun CustomerAppContainer(
                             categories = activeCategories,
                             popularItems = filteredItems,
                             activeOrders = customerOrders,
+                            liveServices = activeItems,
                             activeOffers = activeOffers,
                             searchQuery = searchQuery,
                             selectedCategoryId = selectedCatId,

@@ -31,6 +31,7 @@ fun CustomerHomeScreen(
     categories: List<CategoryEntity>,
     popularItems: List<ItemEntity>,
     activeOrders: List<OrderEntity>,
+    liveServices: List<ItemEntity> = popularItems,
     activeOffers: List<OfferWithItems> = emptyList(),
     searchQuery: String,
     selectedCategoryId: String?,
@@ -103,6 +104,66 @@ fun CustomerHomeScreen(
                 }
             }
         }
+        if (liveServices.isNotEmpty()) {
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                Column {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Services added by Hafsa Traders",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = LightTextPrimary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "New or updated services appear here automatically.",
+                        fontSize = 12.sp,
+                        color = LightTextSecondary
+                    )
+                }
+            }
+            items(liveServices.take(8), key = { it.id }) { service ->
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelectItem(service) }
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            service.name,
+                            fontWeight = FontWeight.Bold,
+                            color = LightTextPrimary,
+                            maxLines = 2
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            service.description,
+                            fontSize = 11.sp,
+                            color = LightTextSecondary,
+                            maxLines = 2
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "₹${if (service.price % 1.0 == 0.0) service.price.toInt() else service.price} • ${service.unit}",
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                TextButton(
+                    onClick = onViewAllServices,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View all services")
+                }
+            }
+        }
+
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
