@@ -922,3 +922,48 @@ fun AdminBottomNavigation(
         )
     }
 }
+
+@Composable
+fun ItemDetailBottomSheet(
+    item: ItemEntity?,
+    onDismiss: () -> Unit,
+    onAddToCart: (ItemEntity, Int) -> Unit,
+    onDirectOrder: (ItemEntity, Int) -> Unit
+) {
+    if (item == null) return
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(item.name) },
+        text = { Text("${item.description}\n\nPrice: ₹${item.price} per ${item.unit}") },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onDirectOrder(item, item.minQuantity) }) { Text("Order Now") }
+        },
+        dismissButton = {
+            androidx.compose.foundation.layout.Row {
+                androidx.compose.material3.TextButton(onClick = { onAddToCart(item, item.minQuantity) }) { Text("Add to Cart") }
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") }
+            }
+        }
+    )
+}
+
+@Composable
+fun CustomerOfferDetailBottomSheet(
+    offerWithItems: com.example.data.local.OfferWithItems,
+    onDismiss: () -> Unit,
+    onSelectItem: (ItemEntity) -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(offerWithItems.offer.title) },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                Text(offerWithItems.offer.description)
+                offerWithItems.items.forEach { item ->
+                    androidx.compose.material3.TextButton(onClick = { onSelectItem(item) }) { Text(item.name) }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
